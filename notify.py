@@ -15,7 +15,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {vol.Required(CONF_RECIPIENT): cv.string, vol.Optional(CONF_NAME): cv.string}
 )
 
-def get_service(hass, config, discovery_info=None):
+def get_service(hass):
     """Get the SMS notification service."""
 
     if MODEM_GATEWAY not in hass.data[DOMAIN]:
@@ -24,22 +24,16 @@ def get_service(hass, config, discovery_info=None):
 
     gateway = hass.data[DOMAIN][MODEM_GATEWAY]
 
-    if discovery_info is None:
-        number = config[CONF_RECIPIENT]
-    else:
-        number = discovery_info[CONF_RECIPIENT]
-
-    return SMSNotificationService(gateway, number)
+    return SMSNotificationService(gateway)
 
 
 class SMSNotificationService(BaseNotificationService):
     """Implement the notification service for SMS."""
 
-    def __init__(self, gateway, number):
+    def __init__(self, gateway):
         """Initialize the service."""
         self.gateway = gateway
-        self.number = number
 
-    async def send_message(self, message="", **kwargs):
+    async def send_message(self, number, message):
         """Send SMS message."""
-        await self.gateway.send_sms_async(self.number, message)
+        await self.gateway.send_sms_async(number, message)

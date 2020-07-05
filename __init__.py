@@ -11,63 +11,31 @@ from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, MODEM_GATEWAY
 from .gateway import create_modem_gateway
+from .notify import get_service
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor"]
-
-CONFIG_SCHEMA = vol.Schema(
-    {DOMAIN: vol.Schema({vol.Required(CONF_DEVICE): cv.isdevice})},
-    extra=vol.ALLOW_EXTRA,
-)
-
+ATTR_NUMBER = "number"
+ATTR_MESSAGE = "message"
 
 async def async_setup(hass, config):
-    """Configure Gammu state machine."""
+    """Set up is called when Home Assistant is loading our component."""
+
+    def handle_send_sms(call):
+        """Handle the service call."""
+        number = call.data.get(ATTR_NUMBER)
+        message = call.data.get(ATTR_MESSAGE)
+        get_service(hass).send_message("067683837", "HA")
+
     hass.data.setdefault(DOMAIN, {})
-    sms_config = config.get(DOMAIN, {})
-    if not sms_config:
-        return True
 
-    hass.async_create_task(
-        hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_IMPORT}, data=sms_config,
-        )
-    )
-
-    return True
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Configure Gammu state machine."""
-
-    device = entry.data[CONF_DEVICE]
-    config = {"Device": device, "Connection": "at"}
     gateway = await create_modem_gateway(config, hass)
     if not gateway:
         return False
     hass.data[DOMAIN][MODEM_GATEWAY] = gateway
-    for component in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, component)
-        )
 
+    hass.services.register(DOMAIN, "send_sms", handle_send_sms)
+
+
+    # Return boolean to indicate that initialization was successfully.
     return True
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Unload a config entry."""
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, component)
-                for component in PLATFORMS
-            ]
-        )
-    )
-
-    if unload_ok:
-        gateway = hass.data[DOMAIN].pop(MODEM_GATEWAY)
-        await gateway.terminate_async()
-
-    return unload_ok

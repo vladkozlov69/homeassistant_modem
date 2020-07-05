@@ -1,0 +1,9 @@
+send_sms:
+  description: Sends sms
+  fields:
+    number:
+      description: Phone number
+      example: 12345678
+    message:
+      description: message text
+      example: Hello
