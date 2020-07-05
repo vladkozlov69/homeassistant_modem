@@ -11,9 +11,9 @@ from .const import DOMAIN, MODEM_GATEWAY
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {vol.Required(CONF_RECIPIENT): cv.string, vol.Optional(CONF_NAME): cv.string}
-)
+# PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+#     {vol.Required(CONF_RECIPIENT): cv.string, vol.Optional(CONF_NAME): cv.string}
+# )
 
 def get_service(hass):
     """Get the SMS notification service."""
@@ -34,6 +34,6 @@ class SMSNotificationService(BaseNotificationService):
         """Initialize the service."""
         self.gateway = gateway
 
-    async def send_message(self, number, message):
+    def send_message(self, number, message):
         """Send SMS message."""
-        await self.gateway.send_sms_async(number, message)
+        self.gateway.send_sms_async(number, message)

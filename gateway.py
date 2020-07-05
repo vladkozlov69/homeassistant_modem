@@ -34,26 +34,17 @@ class Gateway:
         return get_mm_object().get_modem()
 
 
-    async def send_sms_async(self, number, message):
+    def send_sms_async(self, number, message):
         """Send sms message via the worker."""
         sms_properties = ModemManager.SmsProperties.new ()
         sms_properties.set_number(number)
         sms_properties.set_text(message)
 
-        # Connection to ModemManager
-        connection = Gio.bus_get_sync (Gio.BusType.SYSTEM, None)
-        manager = ModemManager.Manager.new_sync (connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
-        if manager.get_name_owner() is None:
-            sys.stderr.write('ModemManager not found in bus')
-            sys.exit(2)
+        messaging = self.get_mm_object().get_modem_messaging()
 
-        # Iterate modems and send SMS with each
-        for obj in manager.get_objects():
-            messaging = obj.get_modem_messaging()
-            sms = messaging.create_sync(sms_properties)
-            sms.send_sync()
-            print('%s: sms sent' % messaging.get_object_path())
-        return await self._worker.send_sms_async(message)
+        sms = messaging.create_sync(sms_properties)
+        sms.send_sync()
+        _LOGGER.info('%s: sms sent' % messaging.get_object_path())
 
 
     async def get_operator_name_async(self):
@@ -66,7 +57,7 @@ class Gateway:
         return get_mm_modem().get_signal_quality()
 
 
-async def create_modem_gateway(config, hass):
+def create_modem_gateway(config, hass):
     """Create the modem gateway."""
     gateway = Gateway(hass)
     return gateway
