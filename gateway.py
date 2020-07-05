@@ -20,6 +20,15 @@ class Gateway:
         """Initialize the sms gateway."""
         self._hass = hass
 
+    def get_mm_object(self):
+        """Gets ModemManager object"""
+        connection = Gio.bus_get_sync (Gio.BusType.SYSTEM, None)
+        manager = ModemManager.Manager.new_sync (connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
+        if manager.get_name_owner() is None:
+            _LOGGER.error("ModemManager not found in bus")
+            return
+        return manager.get_objects()[0]
+
 
     def sms_callback(self, state_machine, callback_type, callback_data):
         """Receive notification about incoming event.
