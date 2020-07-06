@@ -31,7 +31,7 @@ class Gateway:
 
     def get_mm_modem(self):
         """Gets ModemManager modem"""
-        return get_mm_object().get_modem()
+        return self.get_mm_object().get_modem()
 
 
     def send_sms_async(self, number, message):
@@ -47,14 +47,20 @@ class Gateway:
         _LOGGER.info('%s: sms sent' % messaging.get_object_path())
 
 
-    async def get_operator_name_async(self):
+    def get_operator_name(self):
         """Get the IMEI of the device."""
-        return get_mm_modem().get_sim_sync().get_operator_name()
+        return self.get_mm_modem().get_sim_sync().get_operator_name()
 
 
-    async def get_signal_quality_async(self):
+    def get_signal_strength(self):
         """Get the current signal level of the modem."""
-        return get_mm_modem().get_signal_quality()
+        return self.get_mm_modem().get_signal_quality()
+
+
+    def get_modem_state(self):
+        """Get the current state of the modem."""
+        modem_state = self.get_mm_modem().get_state()
+        return ModemManager.ModemState.get_string(modem_state)
 
 
 def create_modem_gateway(config, hass):
