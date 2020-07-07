@@ -34,7 +34,7 @@ class Gateway:
         return self.get_mm_object().get_modem()
 
 
-    def send_sms_async(self, number, message):
+    def send_sms(self, number, message):
         """Send sms message via the worker."""
         sms_properties = ModemManager.SmsProperties.new ()
         sms_properties.set_number(number)
