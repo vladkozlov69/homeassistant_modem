@@ -3,7 +3,17 @@ send_sms:
   fields:
     number:
       description: Phone number
-      example: 12345678
+      example: 067683837
     message:
       description: message text
-      example: Hello
+      example: Hello from HASS
+
+lte_up:
+  description: Enables LTE connection by name
+  fields:
+    connection_name:
+      description: Connection name created by NetworkManager
+      example: Unite
+
+lte_down:
+  description: Disables active LTE connection

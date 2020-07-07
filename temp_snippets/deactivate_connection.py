@@ -17,5 +17,5 @@ active_connection = device.ActiveConnection
 print(active_connection.Id)
 
 
-# And connect
+# And disconnect
 NetworkManager.NetworkManager.DeactivateConnection(active_connection)

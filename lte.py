@@ -7,7 +7,7 @@ from .const import DOMAIN, MODEM_GATEWAY
 
 _LOGGER = logging.getLogger(__name__)
 
-def get_sms_service(hass):
+def get_lte_service(hass):
     """Get the SMS notification service."""
 
     if MODEM_GATEWAY not in hass.data[DOMAIN]:
@@ -16,17 +16,20 @@ def get_sms_service(hass):
 
     gateway = hass.data[DOMAIN][MODEM_GATEWAY]
 
-    return SMSNotificationService(gateway)
+    return MMLteService(gateway)
 
 
-class SMSNotificationService:
+class MMLteService:
     """Implement the notification service for SMS."""
 
     def __init__(self, gateway):
         """Initialize the service."""
         self.gateway = gateway
 
-    def send_message(self, number, message):
-        """Send SMS message."""
+    def lte_up(self, connection_name):
+        """LTE Up."""
+        self.gateway.lte_up(connection_name)
 
-        self.gateway.send_sms(number, message)
+    def lte_down(self):
+        """LTE Down."""
+        self.gateway.lte_down()
