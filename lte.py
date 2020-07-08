@@ -26,9 +26,9 @@ class MMLteService:
         """Initialize the service."""
         self.gateway = gateway
 
-    def lte_up(self, connection_name):
+    def lte_up(self):
         """LTE Up."""
-        self.gateway.lte_up(connection_name)
+        self.gateway.lte_up()
 
     def lte_down(self):
         """LTE Down."""

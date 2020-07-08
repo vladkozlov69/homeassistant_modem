@@ -19,10 +19,12 @@ class ModemGatewayException(Exception):
 
 class Gateway:
     """SMS gateway to interact with a GSM modem."""
+    _config_entry = None
 
-    def __init__(self, hass):
+    def __init__(self, config_entry, hass):
         """Initialize the sms gateway."""
         self._hass = hass
+        self._config_entry = config_entry
 
     def get_mm_object(self):
         """Gets ModemManager object"""
@@ -64,7 +66,7 @@ class Gateway:
         modem_state = self.get_mm_modem().get_state()
         return ModemManager.ModemState.get_string(modem_state)
 
-    def lte_up(self, connection_name):
+    def lte_up(self):
         """LTE Up."""
         # Find the connection
         connections = NetworkManager.Settings.ListConnections()
@@ -116,7 +118,7 @@ class Gateway:
             _LOGGER.warning('No active LTE connection found')
 
 
-def create_modem_gateway(config, hass):
+def create_modem_gateway(config_entry, hass):
     """Create the modem gateway."""
-    gateway = Gateway(hass)
+    gateway = Gateway(config_entry, hass)
     return gateway

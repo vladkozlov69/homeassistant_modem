@@ -3,10 +3,13 @@ import asyncio
 import logging
 
 import voluptuous as vol
+
+from homeassistant.core import callback
+
 import homeassistant.helpers.config_validation as cv
+from homeassistant.config_entries import SOURCE_IMPORT
 
 from .const import DOMAIN, MODEM_GATEWAY, ATTR_PHONE_NUMBER, ATTR_MESSAGE, ATTR_CONNECTION_NAME
-
 
 from .gateway import create_modem_gateway
 from .notify import get_sms_service
@@ -28,30 +31,49 @@ MM_LTE_SERVICE_SCHEMA = vol.Schema(
 
 _LOGGER = logging.getLogger(__name__)
 
+async def async_setup(hass, config):
+    """Import integration from config."""
 
-def setup(hass, config):
-    """Set up is called when Home Assistant is loading our component."""
+    if DOMAIN in config:
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": SOURCE_IMPORT}, data=config[DOMAIN]
+            )
+        )
+    return True
 
+
+async def async_setup_entry(hass, config_entry):
+    """Set up the LTE Modem component."""
+
+    print("async_setup_entry => %s" % config_entry.options)
+
+    @callback
     def handle_send_sms(call):
         """Handle the sms sending service call."""
         number = call.data.get(ATTR_PHONE_NUMBER)
         message = call.data.get(ATTR_MESSAGE)
         get_sms_service(hass).send_message(number, message)
 
+    @callback
     def handle_lte_up(call):
         """Handle the service call."""
-        connection_name = call.data.get(ATTR_CONNECTION_NAME)
-        get_lte_service(hass).lte_up(connection_name)
+        get_lte_service(hass).lte_up()
 
+    @callback
     def handle_lte_down(call):
         """Handle the service call."""
         get_lte_service(hass).lte_down()
+
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(config_entry, "binary_sensor")
+    )
 
     hass.data.setdefault(DOMAIN, {})
 
     _LOGGER.info("Before create_modem_gateway")
 
-    gateway = create_modem_gateway(config, hass)
+    gateway = create_modem_gateway(config_entry, hass)
 
     _LOGGER.info("After create_modem_gateway")
 
@@ -60,9 +82,8 @@ def setup(hass, config):
 
     hass.data[DOMAIN][MODEM_GATEWAY] = gateway
 
-    hass.services.register(DOMAIN, 'send_sms', handle_send_sms, schema=MM_SMS_SERVICE_SCHEMA)
-    hass.services.register(DOMAIN, 'lte_up', handle_lte_up, schema=MM_LTE_SERVICE_SCHEMA)
-    hass.services.register(DOMAIN, 'lte_down', handle_lte_down)
+    hass.services.async_register(DOMAIN, 'send_sms', handle_send_sms, schema=MM_SMS_SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, 'lte_up', handle_lte_up)
+    hass.services.async_register(DOMAIN, 'lte_down', handle_lte_down)
 
-    # Return boolean to indicate that initialization was successfully.
     return True
