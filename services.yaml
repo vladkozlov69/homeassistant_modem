@@ -8,6 +8,13 @@ send_sms:
       description: message text
       example: Hello from HASS
 
+dial:
+  description: Dials the voice number
+  fields:
+    number:
+      description: Phone number
+      example: 067683837
+
 lte_up:
   description: Enables LTE connection by name
   fields:

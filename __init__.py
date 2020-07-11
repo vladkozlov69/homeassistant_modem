@@ -13,6 +13,7 @@ from .const import DOMAIN, MODEM_GATEWAY, ATTR_PHONE_NUMBER, ATTR_MESSAGE, ATTR_
 
 from .gateway import create_modem_gateway
 from .notify import get_sms_service
+from .dialer import get_dialer_service
 from .lte import get_lte_service
 
 
@@ -20,6 +21,12 @@ MM_SMS_SERVICE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_PHONE_NUMBER): cv.string,
         vol.Required(ATTR_MESSAGE): cv.string,
+    }
+)
+
+MM_DIAL_SERVICE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_PHONE_NUMBER): cv.string,
     }
 )
 
@@ -56,6 +63,12 @@ async def async_setup_entry(hass, config_entry):
         get_sms_service(hass).send_message(number, message)
 
     @callback
+    def handle_dial(call):
+        """Handle the sms sending service call."""
+        number = call.data.get(ATTR_PHONE_NUMBER)
+        get_dialer_service(hass).dial(number)
+
+    @callback
     def handle_lte_up(call):
         """Handle the service call."""
         get_lte_service(hass).lte_up()
@@ -83,6 +96,7 @@ async def async_setup_entry(hass, config_entry):
     hass.data[DOMAIN][MODEM_GATEWAY] = gateway
 
     hass.services.async_register(DOMAIN, 'send_sms', handle_send_sms, schema=MM_SMS_SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, 'dial', handle_dial, schema=MM_DIAL_SERVICE_SCHEMA)
     hass.services.async_register(DOMAIN, 'lte_up', handle_lte_up)
     hass.services.async_register(DOMAIN, 'lte_down', handle_lte_down)
 

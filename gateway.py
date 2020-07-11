@@ -1,7 +1,7 @@
 """The sms gateway to interact with a GSM modem."""
 import logging
 
-import sys, signal, gi, NetworkManager
+import sys, signal, gi, NetworkManager, time, threading
 
 gi.require_version('ModemManager', '1.0')
 gi.require_version("NM", "1.0")
@@ -15,16 +15,25 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 class ModemGatewayException(Exception):
-    """I2C-HATs exception."""
+    """Modem Gateway exception."""
 
 class Gateway:
     """SMS gateway to interact with a GSM modem."""
     _config_entry = None
 
+
+    def on_call_started(self, source_object, res, *user_data):
+        for x in range(1,20): ## TODO: make this configurable
+            print(source_object.get_state(), user_data[0][1].get_state())
+            time.sleep(1)
+        user_data[0][0].quit()
+
+
     def __init__(self, config_entry, hass):
         """Initialize the sms gateway."""
         self._hass = hass
         self._config_entry = config_entry
+
 
     def get_mm_object(self):
         """Gets ModemManager object"""
@@ -32,12 +41,18 @@ class Gateway:
         manager = ModemManager.Manager.new_sync (connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
         if manager.get_name_owner() is None:
             _LOGGER.error("ModemManager not found in bus")
-            return
+            return None
         return manager.get_objects()[0]
+
 
     def get_mm_modem(self):
         """Gets ModemManager modem"""
-        return self.get_mm_object().get_modem()
+        mm_object = self.get_mm_object()
+        if (mm_object is not None):
+            return mm_object.get_modem()
+        _LOGGER.warning("No modem found")
+        return None
+
 
     def send_sms(self, number, message):
         """Send sms message via the worker."""
@@ -45,6 +60,7 @@ class Gateway:
         sms_properties.set_number(number)
         sms_properties.set_text(message)
 
+        # TODO: check None
         messaging = self.get_mm_object().get_modem_messaging()
 
         sms = messaging.create_sync(sms_properties)
@@ -52,27 +68,71 @@ class Gateway:
         _LOGGER.info('%s: sms sent' % messaging.get_object_path())
 
 
+    def dial_voice(self, number):
+        call_properties = ModemManager.CallProperties.new()
+        call_properties.set_number(number)
+        main_loop = GLib.MainLoop()
+
+        # TODO: check None
+        voice = self.get_mm_object().get_modem_voice()
+
+        try:
+            call = voice.create_call_sync(call_properties, None)
+            call.start(cancellable=None, callback=self.on_call_started, user_data=(main_loop,call_properties))
+            main_loop.run()
+        except Exception as e:
+            main_loop.quit()
+            _LOGGER.error(e)
+        finally:
+            print('cleanup current call:', call.get_path())
+            print(call.get_state())
+            voice.delete_call_sync(call.get_path(), None)
+            for callvar in voice.list_calls_sync():
+                print('calls:', callvar.get_path())
+                if (ModemManager.CallState.TERMINATED == callvar.get_state()):
+                    print(callvar.get_state())
+                    voice.delete_call_sync(callvar.get_path(), None)
+
+
     def get_operator_name(self):
-        """Get the IMEI of the device."""
-        return self.get_mm_modem().get_sim_sync().get_operator_name()
+        """Get the Operator name of the modem."""
+        modem = self.get_mm_modem()
+        if (modem is None):
+            _LOGGER.warning("No modem found")
+            return None
+        return modem.get_sim_sync().get_operator_name()
 
 
     def get_signal_strength(self):
         """Get the current signal level of the modem."""
-        return self.get_mm_modem().get_signal_quality()
+        modem = self.get_mm_modem()
+        if (modem is None):
+            _LOGGER.warning("No modem found")
+            return None
+        return modem.get_signal_quality()
+
 
     def get_modem_state(self):
         """Get the current state of the modem."""
-        modem_state = self.get_mm_modem().get_state()
+        modem = self.get_mm_modem()
+        if (modem is None):
+            _LOGGER.warning("No modem found")
+            return None
+        modem_state = modem.get_state()
         return ModemManager.ModemState.get_string(modem_state)
+
 
     def lte_up(self):
         """LTE Up."""
         # Find the connection
         connections = NetworkManager.Settings.ListConnections()
         connections = dict([(x.GetSettings()['connection']['id'], x) for x in connections])
-        conn = connections[connection_name]
-# TODO: check for non null
+
+        conn = connections.get(connection_name)
+
+        if (conn is None):
+            _LOGGER.warning("No connection name %s found" % connection_name)
+            raise ModemGatewayException("No connection name %s found" % connection_name)
 
         # Find a suitable device
         ctype = conn.GetSettings()['connection']['type']
@@ -100,6 +160,7 @@ class Gateway:
 
         # And connect
         NetworkManager.NetworkManager.ActivateConnection(conn, dev, "/")
+
 
     def lte_down(self):
         """LTE Down."""
