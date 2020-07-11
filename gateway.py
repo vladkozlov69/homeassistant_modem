@@ -10,7 +10,7 @@ from gi.repository import GLib, GObject, Gio, ModemManager, NM
 
 from homeassistant.core import callback
 
-from .const import DOMAIN
+from .const import DOMAIN, ATTR_CONNECTION_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -134,6 +134,9 @@ class Gateway:
 
     def lte_up(self):
         """LTE Up."""
+
+        connection_name = self._config_entry[ATTR_CONNECTION_NAME]
+
         # Find the connection
         connections = NetworkManager.Settings.ListConnections()
         connections = dict([(x.GetSettings()['connection']['id'], x) for x in connections])
