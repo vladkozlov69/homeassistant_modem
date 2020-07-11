@@ -14,6 +14,8 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+NO_MODEM_FOUND = "No modem found"
+
 class ModemGatewayException(Exception):
     """Modem Gateway exception."""
 
@@ -50,7 +52,7 @@ class Gateway:
         mm_object = self.get_mm_object()
         if (mm_object is not None):
             return mm_object.get_modem()
-        _LOGGER.warning("No modem found")
+        _LOGGER.warning(NO_MODEM_FOUND)
         return None
 
 
@@ -60,8 +62,12 @@ class Gateway:
         sms_properties.set_number(number)
         sms_properties.set_text(message)
 
-        # TODO: check None
-        messaging = self.get_mm_object().get_modem_messaging()
+        mm_object = self.get_mm_object()
+        if (mm_object is None):
+            _LOGGER.error(NO_MODEM_FOUND)
+            raise ModemGatewayException(NO_MODEM_FOUND)
+
+        messaging = mm_object.get_modem_messaging()
 
         sms = messaging.create_sync(sms_properties)
         sms.send_sync()
@@ -73,8 +79,12 @@ class Gateway:
         call_properties.set_number(number)
         main_loop = GLib.MainLoop()
 
-        # TODO: check None
-        voice = self.get_mm_object().get_modem_voice()
+        mm_object = self.get_mm_object()
+        if (mm_object is None):
+            _LOGGER.error(NO_MODEM_FOUND)
+            raise ModemGatewayException(NO_MODEM_FOUND)
+            
+        voice = mm_object.get_modem_voice()
 
         try:
             call = voice.create_call_sync(call_properties, None)
@@ -98,7 +108,7 @@ class Gateway:
         """Get the Operator name of the modem."""
         modem = self.get_mm_modem()
         if (modem is None):
-            _LOGGER.warning("No modem found")
+            _LOGGER.warning(NO_MODEM_FOUND)
             return None
         return modem.get_sim_sync().get_operator_name()
 
@@ -107,7 +117,7 @@ class Gateway:
         """Get the current signal level of the modem."""
         modem = self.get_mm_modem()
         if (modem is None):
-            _LOGGER.warning("No modem found")
+            _LOGGER.warning(NO_MODEM_FOUND)
             return None
         return modem.get_signal_quality()
 
@@ -116,7 +126,7 @@ class Gateway:
         """Get the current state of the modem."""
         modem = self.get_mm_modem()
         if (modem is None):
-            _LOGGER.warning("No modem found")
+            _LOGGER.warning(NO_MODEM_FOUND)
             return None
         modem_state = modem.get_state()
         return ModemManager.ModemState.get_string(modem_state)
