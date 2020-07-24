@@ -135,7 +135,7 @@ class Gateway:
     def lte_up(self):
         """LTE Up."""
 
-        connection_name = self._config_entry[ATTR_CONNECTION_NAME]
+        connection_name = self._config_entry.options[ATTR_CONNECTION_NAME]
 
         # Find the connection
         connections = NetworkManager.Settings.ListConnections()
