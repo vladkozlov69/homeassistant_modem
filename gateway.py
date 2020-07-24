@@ -83,7 +83,7 @@ class Gateway:
         if (mm_object is None):
             _LOGGER.error(NO_MODEM_FOUND)
             raise ModemGatewayException(NO_MODEM_FOUND)
-            
+
         voice = mm_object.get_modem_voice()
 
         try:
@@ -136,6 +136,7 @@ class Gateway:
         """LTE Up."""
 
         connection_name = self._config_entry.options[ATTR_CONNECTION_NAME]
+        print("connection name:", connection_name)
 
         # Find the connection
         connections = NetworkManager.Settings.ListConnections()
@@ -178,11 +179,12 @@ class Gateway:
     def lte_down(self):
         """LTE Down."""
         # list of devices with active connection
-        devices = list(filter(lambda _device: _device.ActiveConnection is not None, NetworkManager.NetworkManager.GetAllDevices()))
+        devices = list(filter(lambda _device: _device.ActiveConnection is not None and _device.ActiveConnection.Id == self._config_entry.options[ATTR_CONNECTION_NAME], 
+            NetworkManager.NetworkManager.GetAllDevices()))
 
         # print the list
         for index, device in enumerate(devices):
-            print(index , ")" , device.Interface)
+            print(index , ")" , device.Interface, " Active:", device.ActiveConnection.Id)
 
         if (devices):
             active_connection = devices[0].ActiveConnection
