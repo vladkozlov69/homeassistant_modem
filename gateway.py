@@ -156,7 +156,7 @@ class Gateway:
                 '802-11-wireless': NetworkManager.NM_DEVICE_TYPE_WIFI,
                 '802-3-ethernet': NetworkManager.NM_DEVICE_TYPE_ETHERNET,
                 'gsm': NetworkManager.NM_DEVICE_TYPE_MODEM,
-            }.get(ctype,ctype)
+            }.get(ctype, ctype)
             devices = NetworkManager.NetworkManager.GetDevices()
 
             for dev in devices:
