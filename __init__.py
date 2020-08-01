@@ -38,6 +38,7 @@ MM_LTE_SERVICE_SCHEMA = vol.Schema(
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup(hass, config):
     """Import integration from config."""
 
@@ -69,12 +70,12 @@ async def async_setup_entry(hass, config_entry):
         get_dialer_service(hass).dial(number)
 
     @callback
-    def handle_lte_up(call):
+    def handle_lte_up():
         """Handle the service call."""
         get_lte_service(hass).lte_up()
 
     @callback
-    def handle_lte_down(call):
+    def handle_lte_down():
         """Handle the service call."""
         get_lte_service(hass).lte_down()
 

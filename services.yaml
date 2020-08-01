@@ -16,11 +16,7 @@ dial:
       example: 067683837
 
 lte_up:
-  description: Enables LTE connection by name
-  fields:
-    connection_name:
-      description: Connection name created by NetworkManager
-      example: Unite
+  description: Enables LTE connection by name configured for this service
 
 lte_down:
   description: Disables active LTE connection

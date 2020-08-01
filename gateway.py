@@ -50,7 +50,7 @@ class Gateway:
     def get_mm_modem(self):
         """Gets ModemManager modem"""
         mm_object = self.get_mm_object()
-        if (mm_object is not None):
+        if mm_object is not None:
             return mm_object.get_modem()
         _LOGGER.warning(NO_MODEM_FOUND)
         return None
@@ -63,7 +63,7 @@ class Gateway:
         sms_properties.set_text(message)
 
         mm_object = self.get_mm_object()
-        if (mm_object is None):
+        if mm_object is None:
             _LOGGER.error(NO_MODEM_FOUND)
             raise ModemGatewayException(NO_MODEM_FOUND)
 
@@ -80,7 +80,7 @@ class Gateway:
         main_loop = GLib.MainLoop()
 
         mm_object = self.get_mm_object()
-        if (mm_object is None):
+        if mm_object is None:
             _LOGGER.error(NO_MODEM_FOUND)
             raise ModemGatewayException(NO_MODEM_FOUND)
 
@@ -99,38 +99,34 @@ class Gateway:
             voice.delete_call_sync(call.get_path(), None)
             for callvar in voice.list_calls_sync():
                 print('calls:', callvar.get_path())
-                if (ModemManager.CallState.TERMINATED == callvar.get_state()):
+                if ModemManager.CallState.TERMINATED == callvar.get_state():
                     print(callvar.get_state())
                     voice.delete_call_sync(callvar.get_path(), None)
-
 
     def get_operator_name(self):
         """Get the Operator name of the modem."""
         modem = self.get_mm_modem()
-        if (modem is None):
+        if modem is None:
             _LOGGER.warning(NO_MODEM_FOUND)
             return None
         return modem.get_sim_sync().get_operator_name()
 
-
     def get_signal_strength(self):
         """Get the current signal level of the modem."""
         modem = self.get_mm_modem()
-        if (modem is None):
+        if modem is None:
             _LOGGER.warning(NO_MODEM_FOUND)
             return None
         return modem.get_signal_quality()
 
-
     def get_modem_state(self):
         """Get the current state of the modem."""
         modem = self.get_mm_modem()
-        if (modem is None):
+        if modem is None:
             _LOGGER.warning(NO_MODEM_FOUND)
             return None
         modem_state = modem.get_state()
         return ModemManager.ModemState.get_string(modem_state)
-
 
     def lte_up(self):
         """LTE Up."""
@@ -144,7 +140,7 @@ class Gateway:
 
         conn = connections.get(connection_name)
 
-        if (conn is None):
+        if conn is None:
             _LOGGER.warning("No connection name %s found" % connection_name)
             raise ModemGatewayException("No connection name %s found" % connection_name)
 
@@ -179,19 +175,25 @@ class Gateway:
     def lte_down(self):
         """LTE Down."""
         # list of devices with active connection
-        devices = list(filter(lambda _device: _device.ActiveConnection is not None and _device.ActiveConnection.Id == self._config_entry.options[ATTR_CONNECTION_NAME], 
-            NetworkManager.NetworkManager.GetAllDevices()))
+        devices = list(filter(lambda _device: _device.ActiveConnection is not None and _device.ActiveConnection.Id == self._config_entry.options[ATTR_CONNECTION_NAME],
+             NetworkManager.NetworkManager.GetAllDevices()))
 
         # print the list
         for index, device in enumerate(devices):
             print(index , ")" , device.Interface, " Active:", device.ActiveConnection.Id)
 
-        if (devices):
-            active_connection = devices[0].ActiveConnection
-            print(active_connection.Id)
-            NetworkManager.NetworkManager.DeactivateConnection(active_connection)
+        if devices:
+            active_conn = devices[0].ActiveConnection
+            print(active_conn.Id)
+            NetworkManager.NetworkManager.DeactivateConnection(active_conn)
         else:
             _LOGGER.warning('No active LTE connection found')
+
+    def get_lte_devices(self):
+        """Returns list of LTE devices"""
+        all_devices = NetworkManager.NetworkManager.GetAllDevices()
+        return list(filter(lambda _device: _device.ActiveConnection is not None and _device.ActiveConnection.Id == self._config_entry.options[ATTR_CONNECTION_NAME],
+             all_devices))
 
 
 def create_modem_gateway(config_entry, hass):
