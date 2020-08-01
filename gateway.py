@@ -13,39 +13,38 @@ from homeassistant.core import callback
 from .const import DOMAIN, ATTR_CONNECTION_NAME
 
 _LOGGER = logging.getLogger(__name__)
+_LOGGER.setLevel(logging.DEBUG)
 
 NO_MODEM_FOUND = "No modem found"
 
+
 class ModemGatewayException(Exception):
     """Modem Gateway exception."""
+
 
 class Gateway:
     """SMS gateway to interact with a GSM modem."""
     _config_entry = None
 
-
     def on_call_started(self, source_object, res, *user_data):
-        for x in range(1,20): ## TODO: make this configurable
+        for x in range(1, 20): ## TODO: make this configurable
             print(source_object.get_state(), user_data[0][1].get_state())
             time.sleep(1)
         user_data[0][0].quit()
-
 
     def __init__(self, config_entry, hass):
         """Initialize the sms gateway."""
         self._hass = hass
         self._config_entry = config_entry
 
-
     def get_mm_object(self):
         """Gets ModemManager object"""
-        connection = Gio.bus_get_sync (Gio.BusType.SYSTEM, None)
+        connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
         manager = ModemManager.Manager.new_sync (connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
         if manager.get_name_owner() is None:
             _LOGGER.error("ModemManager not found in bus")
             return None
         return manager.get_objects()[0]
-
 
     def get_mm_modem(self):
         """Gets ModemManager modem"""
@@ -55,10 +54,9 @@ class Gateway:
         _LOGGER.warning(NO_MODEM_FOUND)
         return None
 
-
     def send_sms(self, number, message):
         """Send sms message via the worker."""
-        sms_properties = ModemManager.SmsProperties.new ()
+        sms_properties = ModemManager.SmsProperties.new()
         sms_properties.set_number(number)
         sms_properties.set_text(message)
 
@@ -71,10 +69,10 @@ class Gateway:
 
         sms = messaging.create_sync(sms_properties)
         sms.send_sync()
-        _LOGGER.info('%s: sms sent' % messaging.get_object_path())
-
+        _LOGGER.info('%s: sms sent', messaging.get_object_path())
 
     def dial_voice(self, number):
+        """Initiale voice call"""
         call_properties = ModemManager.CallProperties.new()
         call_properties.set_number(number)
         main_loop = GLib.MainLoop()
@@ -136,12 +134,12 @@ class Gateway:
 
         # Find the connection
         connections = NetworkManager.Settings.ListConnections()
-        connections = dict([(x.GetSettings()['connection']['id'], x) for x in connections])
+        connections = {x.GetSettings()['connection']['id']: x for x in connections}
 
         conn = connections.get(connection_name)
 
         if conn is None:
-            _LOGGER.warning("No connection name %s found" % connection_name)
+            _LOGGER.warning("No connection name %s found", connection_name)
             raise ModemGatewayException("No connection name %s found" % connection_name)
 
         # Find a suitable device
@@ -151,7 +149,7 @@ class Gateway:
                 if dev.State == NetworkManager.NM_DEVICE_STATE_ACTIVATED and dev.Managed:
                     break
             else:
-                _LOGGER.error("No active, managed device %s found" % ctype)
+                _LOGGER.error("No active, managed device %s found", ctype)
                 raise ModemGatewayException("No active, managed device %s found" % ctype)
         else:
             dtype = {
@@ -165,12 +163,11 @@ class Gateway:
                 if dev.DeviceType == dtype and dev.State == NetworkManager.NM_DEVICE_STATE_DISCONNECTED:
                     break
             else:
-                _LOGGER.error("No suitable and available %s device found" % ctype)
+                _LOGGER.error('No suitable and available %s device found', ctype)
                 return
 
         # And connect
         NetworkManager.NetworkManager.ActivateConnection(conn, dev, "/")
-
 
     def lte_down(self):
         """LTE Down."""
@@ -179,13 +176,15 @@ class Gateway:
              NetworkManager.NetworkManager.GetAllDevices()))
 
         # print the list
-        for index, device in enumerate(devices):
-            print(index , ")" , device.Interface, " Active:", device.ActiveConnection.Id)
+        if _LOGGER.isEnabledFor(logging.INFO):
+            for index, device in enumerate(devices):
+                print(index, ")", device.Interface, " Active:", device.ActiveConnection.Id)
 
         if devices:
             active_conn = devices[0].ActiveConnection
             print(active_conn.Id)
             NetworkManager.NetworkManager.DeactivateConnection(active_conn)
+
         else:
             _LOGGER.warning('No active LTE connection found')
 

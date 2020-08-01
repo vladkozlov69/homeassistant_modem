@@ -34,11 +34,12 @@ class MMLteConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self.async_show_form(step_id="user")
 
-        return self.async_create_entry(title="MM Lte Config1", data=user_input)
+        return self.async_create_entry(title="Lte Config", data=user_input)
 
 
 class MMLteConfigOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle SpeedTest options."""
+
     def __init__(self, config_entry):
         """Initialize options flow."""
         self.config_entry = config_entry
@@ -47,7 +48,7 @@ class MMLteConfigOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Manage the options."""
         if user_input is not None:
-            return self.async_create_entry(title="MM Lte Config2", data=user_input)
+            return self.async_create_entry(title="Lte Config", data=user_input)
 
         return self.async_show_form(
             step_id="init",

@@ -22,14 +22,17 @@ REGISTERED_STATUS = 'registered'
 SENSOR_ID = 'mm_modem.signal_strength'
 SENSOR_NAME = 'GSM Modem'
 
+
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform."""
     add_entities([GsmModemSensor(hass)])
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the Speedtestdotnet sensors."""
 
     async_add_entities([GsmModemSensor(hass)])
+
 
 class GsmModemSensor(BinarySensorEntity):
     """Representation of a Sensor."""
@@ -74,8 +77,8 @@ class GsmModemSensor(BinarySensorEntity):
         is lowercase snake_case.
         """
         return {SENSOR_STATUS: self._modem_status,
-            SENSOR_OPERATOR: self._cell_operator,
-            SENSOR_SIGNAL: self._signal_strength}
+                SENSOR_OPERATOR: self._cell_operator,
+                SENSOR_SIGNAL: self._signal_strength}
 
     def update(self):
         """Fetch new state data for the sensor.
