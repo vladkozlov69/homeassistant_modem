@@ -16,17 +16,19 @@ DATA_SCHEMA = vol.Schema(
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class MMLteConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Example config flow."""
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
+        """Returns flow handler"""
         return MMLteConfigOptionsFlowHandler(config_entry)
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
         if self._async_current_entries():
-            print("=> one_instance_allowed");
+            print("=> one_instance_allowed")
             return self.async_abort(reason="one_instance_allowed")
 
         if user_input is None:

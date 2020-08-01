@@ -7,12 +7,13 @@ from .const import DOMAIN, MODEM_GATEWAY
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def get_dialer_service(hass):
     """Get the SMS notification service."""
 
     if MODEM_GATEWAY not in hass.data[DOMAIN]:
         _LOGGER.error("SMS gateway not found, cannot initialize service")
-        return
+        return None
 
     gateway = hass.data[DOMAIN][MODEM_GATEWAY]
 
