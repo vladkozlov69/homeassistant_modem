@@ -1,8 +1,6 @@
 """Support for Dial notification services."""
 import logging
 
-import homeassistant.helpers.config_validation as cv
-
 from .const import DOMAIN, MODEM_GATEWAY
 from .exceptions import GSMGatewayException
 

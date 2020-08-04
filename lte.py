@@ -13,8 +13,13 @@ def get_lte_service(hass):
     """Get the SMS notification service."""
 
     if MODEM_GATEWAY not in hass.data[DOMAIN]:
+<<<<<<< Updated upstream
         _LOGGER.error("GSM gateway not found, cannot initialize service")
         raise GSMGatewayException("GSM gateway not found")
+=======
+        _LOGGER.error("SMS gateway not found, cannot initialize service")
+        return None
+>>>>>>> Stashed changes
 
     gateway = hass.data[DOMAIN][MODEM_GATEWAY]
 

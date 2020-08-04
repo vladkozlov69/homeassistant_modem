@@ -69,7 +69,11 @@ class Gateway:
 
         sms = messaging.create_sync(sms_properties)
         sms.send_sync()
+<<<<<<< Updated upstream
         _LOGGER.info('%s: sms sent', messaging.get_object_path())
+=======
+        _LOGGER.info('%s: sms sent' % messaging.get_object_path())
+>>>>>>> Stashed changes
 
     def dial_voice(self, number):
         """Initiale voice call"""
@@ -139,7 +143,11 @@ class Gateway:
         conn = connections.get(connection_name)
 
         if conn is None:
+<<<<<<< Updated upstream
             _LOGGER.warning("No connection name %s found", connection_name)
+=======
+            _LOGGER.warning("No connection name %s found" % connection_name)
+>>>>>>> Stashed changes
             raise ModemGatewayException("No connection name %s found" % connection_name)
 
         # Find a suitable device
@@ -176,6 +184,7 @@ class Gateway:
              NetworkManager.NetworkManager.GetAllDevices()))
 
         # print the list
+<<<<<<< Updated upstream
         if _LOGGER.isEnabledFor(logging.INFO):
             for index, device in enumerate(devices):
                 print(index, ")", device.Interface, " Active:", device.ActiveConnection.Id)
@@ -185,6 +194,15 @@ class Gateway:
             print(active_conn.Id)
             NetworkManager.NetworkManager.DeactivateConnection(active_conn)
 
+=======
+        for index, device in enumerate(devices):
+            print(index, ")", device.Interface)
+
+        if devices:
+            active_connection = devices[0].ActiveConnection
+            print(active_connection.Id)
+            NetworkManager.NetworkManager.DeactivateConnection(active_connection)
+>>>>>>> Stashed changes
         else:
             _LOGGER.warning('No active LTE connection found')
 
