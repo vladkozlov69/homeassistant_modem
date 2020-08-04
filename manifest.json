@@ -3,5 +3,6 @@
   "name": "ModemManager interface (SMS, Calls)",
   "documentation": "https://www.home-assistant.io/integrations/sms",
   "requirements": ["python-networkmanager==2.1"],
-  "codeowners": ["@vkozloff"]
+  "codeowners": ["@vkozloff"],
+  "config_flow": true
 }

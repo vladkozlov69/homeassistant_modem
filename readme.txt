@@ -39,3 +39,8 @@ Action=org.freedesktop.ModemManager1.*
 ResultAny=yes
 ResultActive=yes
 ResultInactive=yes
+
+
+https://docs.ubuntu.com/core/en/stacks/network/network-manager/docs/configure-cellular-connections
+
+///https://www.ricmedia.com/set-permanent-dns-nameservers-ubuntu-debian-resolv-conf/
