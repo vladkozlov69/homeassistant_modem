@@ -40,10 +40,11 @@ class Gateway:
     def get_mm_object(self):
         """Gets ModemManager object"""
         connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-        manager = ModemManager.Manager.new_sync (connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
+        manager = ModemManager.Manager.new_sync(connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
         if manager.get_name_owner() is None:
             _LOGGER.error("ModemManager not found in bus")
             return None
+        print(manager.get_objects(), len(manager.get_objects()))
         if manager.get_objects() is None:
             _LOGGER.warning("Modem is not connected")
             return None
