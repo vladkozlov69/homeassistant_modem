@@ -44,6 +44,9 @@ class Gateway:
         if manager.get_name_owner() is None:
             _LOGGER.error("ModemManager not found in bus")
             return None
+        if manager.get_objects() is None:
+            _LOGGER.warning("Modem is not connected")
+            return None
         return manager.get_objects()[0]
 
     def get_mm_modem(self):
