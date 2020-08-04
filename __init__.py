@@ -80,7 +80,8 @@ async def async_setup_entry(hass, config_entry):
         get_lte_service(hass).lte_down()
 
     hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(config_entry, "binary_sensor")
+        hass.config_entries.async_forward_entry_setup(config_entry,
+                                                      "binary_sensor")
     )
 
     hass.data.setdefault(DOMAIN, {})
@@ -96,8 +97,10 @@ async def async_setup_entry(hass, config_entry):
 
     hass.data[DOMAIN][MODEM_GATEWAY] = gateway
 
-    hass.services.async_register(DOMAIN, 'send_sms', handle_send_sms, schema=MM_SMS_SERVICE_SCHEMA)
-    hass.services.async_register(DOMAIN, 'dial', handle_dial, schema=MM_DIAL_SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, 'send_sms', handle_send_sms,
+                                 schema=MM_SMS_SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, 'dial', handle_dial,
+                                 schema=MM_DIAL_SERVICE_SCHEMA)
     hass.services.async_register(DOMAIN, 'lte_up', handle_lte_up)
     hass.services.async_register(DOMAIN, 'lte_down', handle_lte_down)
 

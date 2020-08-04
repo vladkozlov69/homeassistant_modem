@@ -12,8 +12,9 @@ from homeassistant.core import callback
 
 from .const import DOMAIN, ATTR_CONNECTION_NAME
 
-_LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.DEBUG)
+
+_LOG = logging.getLogger(__name__)
+_LOG.setLevel(logging.DEBUG)
 
 NO_MODEM_FOUND = "No modem found"
 
@@ -27,6 +28,7 @@ class Gateway:
     _config_entry = None
 
     def on_call_started(self, source_object, res, *user_data):
+        """Callback method called when GSM call initiated"""
         for x in range(1, 20): ## TODO: make this configurable
             print(source_object.get_state(), user_data[0][1].get_state())
             time.sleep(1)
@@ -37,15 +39,18 @@ class Gateway:
         self._hass = hass
         self._config_entry = config_entry
 
-    def get_mm_object(self):
+    @staticmethod
+    def get_mm_object():
         """Gets ModemManager object"""
         connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-        manager = ModemManager.Manager.new_sync(connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
+        manager = ModemManager.Manager.new_sync(
+            connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START,
+            None)
         if manager.get_name_owner() is None:
-            _LOGGER.error("ModemManager not found in bus")
+            _LOG.error("ModemManager not found in bus")
             return None
         if len(manager.get_objects()) == 0:
-            _LOGGER.warning("Modem is not connected")
+            _LOG.warning("Modem is not connected")
             return None
         return manager.get_objects()[0]
 
@@ -54,7 +59,7 @@ class Gateway:
         mm_object = self.get_mm_object()
         if mm_object is not None:
             return mm_object.get_modem()
-        _LOGGER.warning(NO_MODEM_FOUND)
+        _LOG.warning(NO_MODEM_FOUND)
         return None
 
     def send_sms(self, number, message):
@@ -65,14 +70,14 @@ class Gateway:
 
         mm_object = self.get_mm_object()
         if mm_object is None:
-            _LOGGER.error(NO_MODEM_FOUND)
+            _LOG.error(NO_MODEM_FOUND)
             raise ModemGatewayException(NO_MODEM_FOUND)
 
         messaging = mm_object.get_modem_messaging()
 
         sms = messaging.create_sync(sms_properties)
         sms.send_sync()
-        _LOGGER.info('%s: sms sent', messaging.get_object_path())
+        _LOG.info('%s: sms sent', messaging.get_object_path())
 
     def dial_voice(self, number):
         """Initiale voice call"""
@@ -82,18 +87,19 @@ class Gateway:
 
         mm_object = self.get_mm_object()
         if mm_object is None:
-            _LOGGER.error(NO_MODEM_FOUND)
+            _LOG.error(NO_MODEM_FOUND)
             raise ModemGatewayException(NO_MODEM_FOUND)
 
         voice = mm_object.get_modem_voice()
 
         try:
             call = voice.create_call_sync(call_properties, None)
-            call.start(cancellable=None, callback=self.on_call_started, user_data=(main_loop,call_properties))
+            call.start(cancellable=None, callback=self.on_call_started,
+                       user_data=(main_loop, call_properties))
             main_loop.run()
         except Exception as e:
             main_loop.quit()
-            _LOGGER.error(e)
+            _LOG.error(e)
         finally:
             print('cleanup current call:', call.get_path())
             print(call.get_state())
@@ -108,7 +114,7 @@ class Gateway:
         """Get the Operator name of the modem."""
         modem = self.get_mm_modem()
         if modem is None:
-            _LOGGER.warning(NO_MODEM_FOUND)
+            _LOG.warning(NO_MODEM_FOUND)
             return None
         return modem.get_sim_sync().get_operator_name()
 
@@ -116,7 +122,7 @@ class Gateway:
         """Get the current signal level of the modem."""
         modem = self.get_mm_modem()
         if modem is None:
-            _LOGGER.warning(NO_MODEM_FOUND)
+            _LOG.warning(NO_MODEM_FOUND)
             return None
         return modem.get_signal_quality()
 
@@ -124,7 +130,7 @@ class Gateway:
         """Get the current state of the modem."""
         modem = self.get_mm_modem()
         if modem is None:
-            _LOGGER.warning(NO_MODEM_FOUND)
+            _LOG.warning(NO_MODEM_FOUND)
             return None
         modem_state = modem.get_state()
         return ModemManager.ModemState.get_string(modem_state)
@@ -133,16 +139,18 @@ class Gateway:
         """LTE Up."""
 
         connection_name = self._config_entry.options[ATTR_CONNECTION_NAME]
-        print("connection name:", connection_name)
+        if _LOG.isEnabledFor(logging.DEBUG):
+            _LOG.debug("connection name: %s", connection_name)
 
         # Find the connection
         connections = NetworkManager.Settings.ListConnections()
-        connections = {x.GetSettings()['connection']['id']: x for x in connections}
+        connections = {x.GetSettings()['connection']['id']: x
+                       for x in connections}
 
         conn = connections.get(connection_name)
 
         if conn is None:
-            _LOGGER.warning("No connection name %s found", connection_name)
+            _LOG.warning("No connection name %s found", connection_name)
             raise ModemGatewayException("No connection name %s found" % connection_name)
 
         # Find a suitable device
@@ -152,7 +160,7 @@ class Gateway:
                 if dev.State == NetworkManager.NM_DEVICE_STATE_ACTIVATED and dev.Managed:
                     break
             else:
-                _LOGGER.error("No active, managed device %s found", ctype)
+                _LOG.error("No active, managed device %s found", ctype)
                 raise ModemGatewayException("No active, managed device %s found" % ctype)
         else:
             dtype = {
@@ -166,7 +174,7 @@ class Gateway:
                 if dev.DeviceType == dtype and dev.State == NetworkManager.NM_DEVICE_STATE_DISCONNECTED:
                     break
             else:
-                _LOGGER.error('No suitable and available %s device found', ctype)
+                _LOG.error('No suitable and available %s device found', ctype)
                 return
 
         # And connect
@@ -176,12 +184,13 @@ class Gateway:
         """LTE Down."""
         # list of devices with active connection
         devices = list(filter(lambda _device: _device.ActiveConnection is not None and _device.ActiveConnection.Id == self._config_entry.options[ATTR_CONNECTION_NAME],
-             NetworkManager.NetworkManager.GetAllDevices()))
+                              NetworkManager.NetworkManager.GetAllDevices()))
 
         # print the list
-        if _LOGGER.isEnabledFor(logging.INFO):
+        if _LOG.isEnabledFor(logging.INFO):
             for index, device in enumerate(devices):
-                print(index, ")", device.Interface, " Active:", device.ActiveConnection.Id)
+                print(index, ")", device.Interface,
+                      " Active:", device.ActiveConnection.Id)
 
         if devices:
             active_conn = devices[0].ActiveConnection
@@ -189,13 +198,13 @@ class Gateway:
             NetworkManager.NetworkManager.DeactivateConnection(active_conn)
 
         else:
-            _LOGGER.warning('No active LTE connection found')
+            _LOG.warning('No active LTE connection found')
 
     def get_lte_devices(self):
         """Returns list of LTE devices"""
         all_devices = NetworkManager.NetworkManager.GetAllDevices()
         return list(filter(lambda _device: _device.ActiveConnection is not None and _device.ActiveConnection.Id == self._config_entry.options[ATTR_CONNECTION_NAME],
-             all_devices))
+                           all_devices))
 
 
 def create_modem_gateway(config_entry, hass):
