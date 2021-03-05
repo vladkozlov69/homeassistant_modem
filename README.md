@@ -1,7 +1,7 @@
 # homeassistant_modem
 
 ```
-sudo apt-get install build-essential python3-pip python3-dev python3-venv python3-setuptools python3-wheel libffi-dev python3-venv python3.8-venv libssl-dev libjpeg-dev zlib1g-dev libopenjp2-7 libtiff5
+sudo apt-get install build-essential python3-pip python3-dev python3-venv python3-setuptools python3-wheel libffi-dev python3-venv python3.8-venv libssl-dev libjpeg-dev zlib1g-dev libopenjp2-7 libtiff5  tcpdump libpcap0.8-dev
 
 python3 -m venv homeassistant
 cd homeassistant
