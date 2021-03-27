@@ -8,14 +8,22 @@ import homeassistant.helpers.config_validation as cv
 from .const import DOMAIN, MODEM_GATEWAY
 from .exceptions import GSMGatewayException
 
-from homeassistant.components.notify import PLATFORM_SCHEMA, BaseNotificationService
+from homeassistant.components.notify import (
+    PLATFORM_SCHEMA,
+    BaseNotificationService
+)
+
 from homeassistant.const import CONF_NAME, CONF_RECIPIENT
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {vol.Required(CONF_RECIPIENT): cv.string, vol.Optional(CONF_NAME): cv.string}
+    {
+        vol.Required(CONF_RECIPIENT): cv.string,
+        vol.Optional(CONF_NAME): cv.string
+    }
 )
+
 
 def get_service(hass, config, discovery_info=None):
     """Get the SMS notification service."""
@@ -32,6 +40,7 @@ def get_service(hass, config, discovery_info=None):
         number = discovery_info[CONF_RECIPIENT]
 
     return SMSNotificationService2(gateway, number)
+
 
 def get_sms_service(hass):
     """Get the SMS notification service."""
@@ -58,7 +67,7 @@ class SMSNotificationService2(BaseNotificationService):
         try:
             # Actually send the message
             self.gateway.send_sms(self.number, message)
-        except GSMGatewayException as exc:  # pylint: disable=no-member
+        except GSMGatewayException as exc:
             _LOGGER.error("Sending to %s failed: %s", self.number, exc)
 
 

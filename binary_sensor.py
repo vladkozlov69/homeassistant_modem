@@ -1,10 +1,6 @@
 """Platform for sensor integration."""
 
-from homeassistant.helpers.entity import Entity
-from datetime import timedelta
 import logging
-
-from random import randrange
 
 from .const import DOMAIN, MODEM_GATEWAY
 
