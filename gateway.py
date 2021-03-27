@@ -41,7 +41,7 @@ class Gateway:
         self._config_entry = config_entry
 
     @staticmethod
-    def get_mm_object():
+    def get_mm_object(show_warning=True):
         """Gets ModemManager object"""
         connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
         manager = ModemManager.Manager.new_sync(
@@ -50,17 +50,18 @@ class Gateway:
         if manager.get_name_owner() is None:
             _LOG.error("ModemManager not found in bus")
             return None
-        if len(manager.get_objects()) == 0:
+        if (show_warning and (len(manager.get_objects()) == 0)):
             _LOG.warning("Modem is not connected")
             return None
         return manager.get_objects()[0]
 
-    def get_mm_modem(self):
+    def get_mm_modem(self, show_warning=True):
         """Gets ModemManager modem"""
         mm_object = self.get_mm_object()
         if mm_object is not None:
             return mm_object.get_modem()
-        _LOG.warning(NO_MODEM_FOUND)
+        if show_warning:
+            _LOG.warning(NO_MODEM_FOUND)
         return None
 
     def send_sms(self, number, message):
@@ -111,30 +112,18 @@ class Gateway:
                     print(callvar.get_state())
                     voice.delete_call_sync(callvar.get_path(), None)
 
-    def get_operator_name(self):
-        """Get the Operator name of the modem."""
-        modem = self.get_mm_modem()
-        if modem is None:
-            _LOG.warning(NO_MODEM_FOUND)
-            return None
-        return modem.get_sim_sync().get_operator_name()
-
-    def get_signal_strength(self):
-        """Get the current signal level of the modem."""
-        modem = self.get_mm_modem()
-        if modem is None:
-            _LOG.warning(NO_MODEM_FOUND)
-            return None
-        return modem.get_signal_quality()
-
     def get_modem_state(self):
         """Get the current state of the modem."""
-        modem = self.get_mm_modem()
+        modem = self.get_mm_modem(False)
         if modem is None:
-            _LOG.warning(NO_MODEM_FOUND)
+            # _LOG.warning(NO_MODEM_FOUND)
             return None
         modem_state = modem.get_state()
-        return ModemManager.ModemState.get_string(modem_state)
+        return {
+            'status': ModemManager.ModemState.get_string(modem_state),
+            'signal': modem.get_signal_quality(),
+            'operator': modem.get_sim_sync().get_operator_name()
+        }
 
     def lte_up(self):
         """LTE Up."""

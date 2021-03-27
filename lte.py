@@ -1,8 +1,6 @@
 """Support for SMS notification services."""
 import logging
 
-import homeassistant.helpers.config_validation as cv
-
 from .const import DOMAIN, MODEM_GATEWAY
 from .exceptions import GSMGatewayException
 
@@ -28,10 +26,10 @@ class MMLteService:
         """Initialize the service."""
         self.gateway = gateway
 
-    def lte_up(self):
+    async def lte_up(self):
         """LTE Up."""
         self.gateway.lte_up()
 
-    def lte_down(self):
+    async def lte_down(self):
         """LTE Down."""
         self.gateway.lte_down()

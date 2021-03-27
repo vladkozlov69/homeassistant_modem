@@ -65,27 +65,31 @@ async def async_setup_entry(hass, config_entry):
     print("async_setup_entry => %s" % config_entry.data)
 
     @callback
-    def handle_send_sms(call):
+    async def handle_send_sms(call):
         """Handle the sms sending service call."""
         number = call.data.get(ATTR_PHONE_NUMBER)
         message = call.data.get(ATTR_MESSAGE)
-        get_sms_service(hass).send_message(number, message)
+        sms_service = get_sms_service(hass)
+        await sms_service.send_message(number, message)
 
     @callback
-    def handle_dial(call):
+    async def handle_dial(call):
         """Handle the sms sending service call."""
         number = call.data.get(ATTR_PHONE_NUMBER)
-        get_dialer_service(hass).dial(number)
+        dialer_service = get_dialer_service(hass)
+        await dialer_service.dial(number)
 
     @callback
-    def handle_lte_up():
+    async def handle_lte_up():
         """Handle the service call."""
-        get_lte_service(hass).lte_up()
+        lte_service = get_lte_service(hass)
+        await lte_service.lte_up()
 
     @callback
-    def handle_lte_down():
+    async def handle_lte_down():
         """Handle the service call."""
-        get_lte_service(hass).lte_down()
+        lte_service = get_lte_service(hass)
+        await lte_service.lte_down()
 
     hass.async_create_task(
         hass.config_entries.async_forward_entry_setup(config_entry,

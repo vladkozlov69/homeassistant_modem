@@ -26,7 +26,7 @@ class DialerNotificationService:
         """Initialize the service."""
         self.gateway = gateway
 
-    def dial(self, number):
+    async def dial(self, number):
         """Dial the given number."""
 
         self.gateway.dial_voice(number)

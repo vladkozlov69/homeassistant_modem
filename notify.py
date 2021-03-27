@@ -8,10 +8,7 @@ import homeassistant.helpers.config_validation as cv
 from .const import DOMAIN, MODEM_GATEWAY
 from .exceptions import GSMGatewayException
 
-from homeassistant.components.notify import (
-    PLATFORM_SCHEMA,
-    BaseNotificationService
-)
+from homeassistant.components.notify import PLATFORM_SCHEMA
 
 from homeassistant.const import CONF_NAME, CONF_RECIPIENT
 
@@ -25,21 +22,21 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-def get_service(hass, config, discovery_info=None):
-    """Get the SMS notification service."""
+# def get_service(hass, config, discovery_info=None):
+#     """Get the SMS notification service."""
 
-    if MODEM_GATEWAY not in hass.data[DOMAIN]:
-        _LOGGER.error("SMS gateway not found, cannot initialize service")
-        return
+#     if MODEM_GATEWAY not in hass.data[DOMAIN]:
+#         _LOGGER.error("SMS gateway not found, cannot initialize service")
+#         return
 
-    gateway = hass.data[DOMAIN][MODEM_GATEWAY]
+#     gateway = hass.data[DOMAIN][MODEM_GATEWAY]
 
-    if discovery_info is None:
-        number = config[CONF_RECIPIENT]
-    else:
-        number = discovery_info[CONF_RECIPIENT]
+#     if discovery_info is None:
+#         number = config[CONF_RECIPIENT]
+#     else:
+#         number = discovery_info[CONF_RECIPIENT]
 
-    return SMSNotificationService2(gateway, number)
+#     return SMSNotificationService2(gateway, number)
 
 
 def get_sms_service(hass):
@@ -54,21 +51,21 @@ def get_sms_service(hass):
     return SMSNotificationService(gateway)
 
 
-class SMSNotificationService2(BaseNotificationService):
-    """Implement the notification service for SMS."""
+# class SMSNotificationService2(BaseNotificationService):
+#     """Implement the notification service for SMS."""
 
-    def __init__(self, gateway, number):
-        """Initialize the service."""
-        self.gateway = gateway
-        self.number = number
+#     def __init__(self, gateway, number):
+#         """Initialize the service."""
+#         self.gateway = gateway
+#         self.number = number
 
-    async def async_send_message(self, message="", **kwargs):
-        """Send SMS message."""
-        try:
-            # Actually send the message
-            self.gateway.send_sms(self.number, message)
-        except GSMGatewayException as exc:
-            _LOGGER.error("Sending to %s failed: %s", self.number, exc)
+#     async def async_send_message(self, message="", **kwargs):
+#         """Send SMS message."""
+#         try:
+#             # Actually send the message
+#             self.gateway.send_sms(self.number, message)
+#         except GSMGatewayException as exc:
+#             _LOGGER.error("Sending to %s failed: %s", self.number, exc)
 
 
 class SMSNotificationService:
@@ -78,6 +75,6 @@ class SMSNotificationService:
         """Initialize the service."""
         self.gateway = gateway
 
-    def send_message(self, number, message):
+    async def send_message(self, number, message):
         """Send SMS message."""
         self.gateway.send_sms(number, message)
