@@ -57,7 +57,7 @@ class Gateway:
 
     def get_mm_modem(self, show_warning=True):
         """Gets ModemManager modem"""
-        mm_object = self.get_mm_object()
+        mm_object = self.get_mm_object(show_warning)
         if mm_object is not None:
             return mm_object.get_modem()
         if show_warning:
