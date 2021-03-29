@@ -4,10 +4,7 @@ import logging
 
 from .const import DOMAIN, MODEM_GATEWAY
 
-from homeassistant.components.binary_sensor import (
-    DEVICE_CLASS_CONNECTIVITY,
-    SensorEntity,
-)
+from homeassistant.helpers.entity import Entity
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
@@ -26,7 +23,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities([GsmModemSmsSensor(hass)])
 
 
-class GsmModemSmsSensor(SensorEntity):
+class GsmModemSmsSensor(Entity):
     """Representation of a Sensor."""
     _hass = None
 
@@ -45,14 +42,14 @@ class GsmModemSmsSensor(SensorEntity):
         return SENSOR_NAME
 
     @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return DEVICE_CLASS_CONNECTIVITY
-
-    @property
     def unique_id(self):
         """Return a unique ID."""
         return SENSOR_ID
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._state
 
     @property
     def device_state_attributes(self):
@@ -67,20 +64,6 @@ class GsmModemSmsSensor(SensorEntity):
 
         This is the only method that should fetch new data for Home Assistant.
         """
-        self._state = 777
-        # gateway = self.get_gateway()
-        # modem_info = gateway.get_modem_state()
-        # if modem_info is not None:
-        #     self._signal_strength = modem_info['signal']
-        #     self._cell_operator = modem_info['operator']
-        #     self._modem_status = modem_info['status']
-        #     if not self._prev_status:
-        #         self._prev_status = True
-        #         _LOGGER.info('GSM modem connected')
-        # else:
-        #     self._signal_strength = 0
-        #     self._modem_status = 'none'
-        #     self._cell_operator = 'none'
-        #     if self._prev_status:
-        #         self._prev_status = False
-        #         _LOGGER.info('GSM modem disconnected')
+        gateway = self.get_gateway()
+        messages = gateway.get_sms_messages()
+        self._state = len(messages)
