@@ -6,6 +6,8 @@ from .const import DOMAIN, MODEM_GATEWAY
 
 from homeassistant.helpers.entity import Entity
 
+from homeassistant.components import logbook
+
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
 
@@ -31,6 +33,8 @@ class GsmModemSmsSensor(Entity):
         """Initialize the sensor."""
         self._state = None
         self._hass = hass
+        self._messages = []
+        self._processed_messages = set()
 
     def get_gateway(self):
         """Returns the modem gateway instance from hass scope"""
@@ -65,5 +69,22 @@ class GsmModemSmsSensor(Entity):
         This is the only method that should fetch new data for Home Assistant.
         """
         gateway = self.get_gateway()
-        messages = gateway.get_sms_messages()
-        self._state = len(messages)
+        self._messages = gateway.get_sms_messages()
+        self._state = len(self._messages)
+        for message in self._messages:
+            if message.path not in self._processed_messages:
+                _LOGGER.info(message.path)
+                self._processed_messages.update({message.path})
+                _LOGGER.info(self._processed_messages)
+                self._hass.services.call(logbook.DOMAIN, 'log', {
+                                         logbook.ATTR_NAME: SENSOR_NAME,
+                                         logbook.ATTR_MESSAGE: message.text,
+                                         logbook.ATTR_DOMAIN: DOMAIN,
+                                         logbook.ATTR_ENTITY_ID: SENSOR_ID
+                                         }, True)
+                self._hass.bus.async_fire(DOMAIN + '_incoming_sms',
+                                          {'path': message.path,
+                                           'number': message.number,
+                                           'timestamp': message.timestamp,
+                                           'text': message.text})
+                gateway.delete_sms_message(message.path)

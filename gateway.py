@@ -217,12 +217,23 @@ class Gateway:
         for message in sms_list:
             if(ModemManager.SmsState.RECEIVED == message.get_state()):
                 messages.append(SmsMessage(
-                    path=message.get_path(),
-                    number=message.get_number(),
-                    text=message.get_text(),
-                    timestamp=message.get_timestamp()
-                ))
+                                    path=message.get_path(),
+                                    number=message.get_number(),
+                                    text=message.get_text(),
+                                    timestamp=message.get_timestamp()
+                                ))
+
         return messages
+
+    def delete_sms_message(self, message_path):
+        mm_object = self.get_mm_object()
+        if mm_object is None:
+            _LOG.error(NO_MODEM_FOUND)
+            raise ModemGatewayException(NO_MODEM_FOUND)
+
+        messaging = mm_object.get_modem_messaging()
+        messaging.call_delete_sync(message_path)
+        _LOG.info('Deleted SMS ' + message_path)
 
 
 def create_modem_gateway(config_entry, hass):
