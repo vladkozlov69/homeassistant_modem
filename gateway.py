@@ -206,24 +206,24 @@ class Gateway:
                            all_devices))
 
     def get_sms_messages(self):
-        mm_object = self.get_mm_object()
-        if mm_object is None:
-            _LOG.error(NO_MODEM_FOUND)
-            raise ModemGatewayException(NO_MODEM_FOUND)
+        mm_object = self.get_mm_object(False)
+        if mm_object is not None:
 
-        messaging = mm_object.get_modem_messaging()
-        sms_list = messaging.list_sync(None)
-        messages = []
-        for message in sms_list:
-            if(ModemManager.SmsState.RECEIVED == message.get_state()):
-                messages.append(SmsMessage(
-                                    path=message.get_path(),
-                                    number=message.get_number(),
-                                    text=message.get_text(),
-                                    timestamp=message.get_timestamp()
-                                ))
+            messaging = mm_object.get_modem_messaging()
+            sms_list = messaging.list_sync(None)
+            messages = []
+            for message in sms_list:
+                if(ModemManager.SmsState.RECEIVED == message.get_state()):
+                    messages.append(SmsMessage(
+                                        path=message.get_path(),
+                                        number=message.get_number(),
+                                        text=message.get_text(),
+                                        timestamp=message.get_timestamp()
+                                    ))
 
-        return messages
+            return messages
+        else:
+            return None
 
     def delete_sms_message(self, message_path):
         mm_object = self.get_mm_object()
