@@ -1,10 +1,6 @@
 """Platform for sensor integration."""
 
-from homeassistant.helpers.entity import Entity
-from datetime import timedelta
 import logging
-
-from random import randrange
 
 from .const import DOMAIN, MODEM_GATEWAY
 
@@ -39,6 +35,7 @@ class GsmModemSensor(BinarySensorEntity):
     _modem_status = 'none'
     _cell_operator = 'none'
     _hass = None
+    _prev_status = False
 
     def __init__(self, hass):
         """Initialize the sensor."""
@@ -85,7 +82,18 @@ class GsmModemSensor(BinarySensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         gateway = self.get_gateway()
-
-        self._signal_strength = gateway.get_signal_strength()
-        self._cell_operator = gateway.get_operator_name()
-        self._modem_status = gateway.get_modem_state()
+        modem_info = gateway.get_modem_state()
+        if modem_info is not None:
+            self._signal_strength = modem_info['signal']
+            self._cell_operator = modem_info['operator']
+            self._modem_status = modem_info['status']
+            if not self._prev_status:
+                self._prev_status = True
+                _LOGGER.info('GSM modem connected')
+        else:
+            self._signal_strength = 0
+            self._modem_status = 'none'
+            self._cell_operator = 'none'
+            if self._prev_status:
+                self._prev_status = False
+                _LOGGER.info('GSM modem disconnected')

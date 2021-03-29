@@ -1,8 +1,9 @@
 {
   "domain": "mm_modem",
   "name": "ModemManager interface (SMS, Calls)",
-  "documentation": "https://www.home-assistant.io/integrations/sms",
-  "requirements": ["python-networkmanager==2.1"],
+  "documentation": "https://github.com/vladkozlov69/homeassistant_modem",
+  "requirements": ["python-networkmanager==2.2"],
   "codeowners": ["@vkozloff"],
-  "config_flow": true
+  "config_flow": true,
+  "version": "0.0.2"
 }
