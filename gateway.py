@@ -6,6 +6,7 @@ import NetworkManager
 import time
 
 from .const import ATTR_CONNECTION_NAME
+from .sms_message import SmsMessage
 
 gi.require_version('ModemManager', '1.0')
 gi.require_version("NM", "1.0")
@@ -50,8 +51,9 @@ class Gateway:
         if manager.get_name_owner() is None:
             _LOG.error("ModemManager not found in bus")
             return None
-        if (show_warning and (len(manager.get_objects()) == 0)):
-            _LOG.warning("Modem is not connected")
+        if (len(manager.get_objects()) == 0):
+            if (show_warning):
+                _LOG.warning("Modem is not connected")
             return None
         return manager.get_objects()[0]
 
@@ -202,6 +204,36 @@ class Gateway:
                            and _dev.ActiveConnection.Id ==
                            self._config_entry.options[ATTR_CONNECTION_NAME],
                            all_devices))
+
+    def get_sms_messages(self):
+        mm_object = self.get_mm_object(False)
+        if mm_object is not None:
+
+            messaging = mm_object.get_modem_messaging()
+            sms_list = messaging.list_sync(None)
+            messages = []
+            for message in sms_list:
+                if(ModemManager.SmsState.RECEIVED == message.get_state()):
+                    messages.append(SmsMessage(
+                                        path=message.get_path(),
+                                        number=message.get_number(),
+                                        text=message.get_text(),
+                                        timestamp=message.get_timestamp()
+                                    ))
+
+            return messages
+        else:
+            return None
+
+    def delete_sms_message(self, message_path):
+        mm_object = self.get_mm_object()
+        if mm_object is None:
+            _LOG.error(NO_MODEM_FOUND)
+            raise ModemGatewayException(NO_MODEM_FOUND)
+
+        messaging = mm_object.get_modem_messaging()
+        messaging.call_delete_sync(message_path)
+        _LOG.info('Deleted SMS ' + message_path)
 
 
 def create_modem_gateway(config_entry, hass):

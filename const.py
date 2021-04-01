@@ -8,3 +8,4 @@ ATTR_MESSAGE = 'message'
 ATTR_CONNECTION_NAME = 'connection_name'
 
 CONF_CONNECTION_NAME = 'connection_name'
+CONF_REMOVE_INCOMING_SMS = 'remove_incoming_sms'
