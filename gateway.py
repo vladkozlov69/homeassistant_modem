@@ -1,8 +1,6 @@
 """The sms gateway to interact with a GSM modem."""
 import logging
 
-import signal
-
 import gi
 import NetworkManager
 import time
@@ -72,9 +70,6 @@ class Gateway:
 
         self._glib_main_loop = GLib.MainLoop()
 
-        # GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGHUP, signal_handler, None)
-        # GLib.unix_signal_add(GLib.PRIORITY_HIGH, signal.SIGTERM, signal_handler, None)
-
         _LOG.info('glib_loop_task start')
         self._glib_main_loop.run()
 
@@ -108,46 +103,35 @@ class Gateway:
         if self.obj is None:
             modem = obj.get_modem()
             if modem.get_state() == ModemManager.ModemState.FAILED:
-                print('%s ignoring failed modem' % modem_index(obj.get_object_path()))
+                _LOG.error('%s ignoring failed modem' % obj.get_object_path())
                 pass
             else:
                 _LOG.info('on_object_added %s' % modem)
                 self.obj = obj
                 self.msging = obj.get_modem_messaging()
-                self.msging_notify_id = self.msging.connect('notify::messages', self.on_messaging_notify)
-                # self.list_msgs (self.msging)
+                self.msging_notify_id = self.msging.connect(
+                    'notify::messages',
+                    self.on_messaging_notify)
 
-                # if modem.get_device() == self.device:
-                    # print 'Found our modem'
-                    # self.obj = obj
-                    # self.msging = obj.get_modem_messaging()
-                    # self.msging_notify_id = self.msging.connect('notify::messages', self.on_messaging_notify)
-                    # self.list_msgs (self.msging)
-                # else:
-                #     #print 'Not our modem'
-                #     pass
-    """
-    ModemManager is now available
-    """
     def set_available(self):
-        if self._available == False or self._initializing == True:
-            print('ModemManager service is available in bus')
-        self.object_added_id = self._manager.connect('object-added', self.on_object_added)
-        self.object_removed_id = self._manager.connect('object-removed', self.on_object_removed)
+        """ModemManager is now available"""
+        if self._available is False or self._initializing:
+            _LOG.info('ModemManager service is available in bus')
+        self.object_added_id = self._manager.connect('object-added',
+                                                     self.on_object_added)
+        self.object_removed_id = self._manager.connect('object-removed',
+                                                       self.on_object_removed)
         self.available = True
 
         # Initial scan
-        if self._initializing == True:
+        if (self._initializing):
             for obj in self._manager.get_objects():
                 self.on_object_added(self._manager, obj)
 
-
-    """
-    ModemManager is now unavailable
-    """
     def set_unavailable(self):
-        if self._available == True or self._initializing == True:
-            print('ModemManager service not available in bus')
+        """ModemManager is now unavailable"""
+        if self._available or self._initializing:
+            _LOG.warn('ModemManager service not available in bus')
             self.obj = None
 
         if self.object_added_id:
@@ -163,11 +147,10 @@ class Gateway:
 
         self.available = False
 
-    """
-    Object removed
-    """
     def on_object_removed(self, manager, obj):
-        print('modem unmanaged by ModemManager: %s' % obj.get_object_path())
+        """Modem disconnected"""
+        _LOG.warn('modem unmanaged by ModemManager: %s'
+                  % obj.get_object_path())
 
         self.msging.disconnect(self.msging_notify_id)
         self.msging_notify_id = 0
@@ -175,11 +158,8 @@ class Gateway:
         self.obj = None
         self.msging = None
 
-
-    """
-    Messaging callback
-    """
     def on_messaging_notify(self, manager, obj):
+        """Messaging callback"""
         _LOG.info('on_messaging_notify')
         if self.obj:
             # msgs = self.obj.get_modem_messaging()
