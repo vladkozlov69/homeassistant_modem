@@ -41,6 +41,21 @@ class GsmModemSensor(BinarySensorEntity):
         """Initialize the sensor."""
         self._state = None
         self._hass = hass
+        hass.bus.async_listen("mm_modem_disconnected",
+                              self._handle_modem_disconnected)
+
+        hass.bus.async_listen("mm_modem_connected",
+                              self._handle_modem_connected)
+
+    async def _handle_modem_disconnected(self, call):
+        _LOGGER.info("_handle_modem_disconnected")
+        self.update()
+        self.async_write_ha_state()
+
+    async def _handle_modem_connected(self, call):
+        _LOGGER.info("_handle_modem_connected")
+        self.update()
+        self.async_write_ha_state()
 
     def get_gateway(self):
         """Returns the modem gateway instance from hass scope"""

@@ -5,6 +5,8 @@ import gi
 import NetworkManager
 import time
 
+import threading
+
 from homeassistant.core import callback
 from .const import ATTR_CONNECTION_NAME
 from .sms_message import SmsMessage
@@ -15,6 +17,9 @@ gi.require_version("NM", "1.0")
 from gi.repository import GLib, Gio, ModemManager
 
 # from homeassistant.core import callback
+
+# import glibcoro
+# glibcoro.install()
 
 _LOG = logging.getLogger(__name__)
 _LOG.setLevel(logging.DEBUG)
@@ -35,6 +40,7 @@ class Gateway:
     _initializing = True
     _available = False
     _messaging = None
+    _do_stop = False
     # IDs for added/removed signals
     _object_added_id = 0
     _object_removed_id = 0
@@ -51,7 +57,7 @@ class Gateway:
     async def async_added_to_hass(self):
         """Handle when an entity is about to be added to Home Assistant."""
         self._glib_loop_task = self._hass.loop.create_task(
-            self.glib_loop_task()
+            self.async_glib_loop_task()
         )
 
     @callback
@@ -59,8 +65,19 @@ class Gateway:
         """Close resources."""
         if (self._glib_main_loop is not None):
             self._glib_main_loop.quit()
+        self._do_stop = True
 
-    async def glib_loop_task(self):
+    def thread_function(self, loop):
+        _LOG.info("Thread : starting")
+        while self._do_stop is False:
+            context = loop.get_context()
+            if context.pending():
+                context.iteration(False)
+            time.sleep(0.01)
+        # loop.run()
+        _LOG.info("Thread : finishing")
+
+    async def async_glib_loop_task(self):
         """GLib loop."""
         self._initializing = True
         connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
@@ -73,7 +90,11 @@ class Gateway:
         self.on_name_owner(self._manager, None)
         self._initializing = False
         self._glib_main_loop = GLib.MainLoop()
-        self._glib_main_loop.run()
+        _LOG.info('_glib_main_loop.run')
+        x = threading.Thread(target=self.thread_function,
+                             args=(self._glib_main_loop,))
+        x.start()
+        _LOG.info('_glib_main_loop.run exit')
 
     def on_call_started(self, source_object, res, *user_data):
         """Callback method called when GSM call initiated"""
@@ -90,10 +111,8 @@ class Gateway:
         else:
             self.set_unavailable()
 
-    """
-    Object added
-    """
     def on_object_added(self, manager, obj):
+        """Object added"""
         _LOG.info('on_object_added')
         if self._modem_object is None:
             modem = obj.get_modem()
@@ -107,6 +126,7 @@ class Gateway:
                 self._messaging_notify_id = self._messaging.connect(
                     'notify::messages',
                     self.on_messaging_notify)
+                self._hass.bus.async_fire('mm_modem_connected', {})
 
     def set_available(self):
         """ModemManager is now available"""
@@ -152,14 +172,16 @@ class Gateway:
 
         self._modem_object = None
         self._messaging = None
+        self._hass.bus.async_fire('mm_modem_disconnected', {})
 
     def on_messaging_notify(self, manager, obj):
         """Messaging callback"""
         _LOG.info('on_messaging_notify')
-        if self._modem_object:
-            # msgs = self.obj.get_modem_messaging()
-            _LOG.info('Got SMS')  # TODO send event to sensor
-            self._hass.bus.async_fire('mm_modem_sms_received', {})
+        # if self._modem_object:
+        # msgs = self.obj.get_modem_messaging()
+        _LOG.info('Got SMS')  # TODO send event to sensor
+        self._hass.bus.async_fire('mm_modem_sms_received', {})
+        _LOG.info(obj)
 
     def get_mm_object(self, show_warning=True):
         """Gets ModemManager object"""
@@ -329,7 +351,9 @@ class Gateway:
         mm_object = self.get_mm_object(False)
         if mm_object is not None:
 
-            messaging = mm_object.get_modem_messaging()  # TODO we should have this in scope
+            messaging = self._messaging
+            # mm_object.get_modem_messaging()
+            # # TODO we should have this in scope
             sms_list = messaging.list_sync(None)
             messages = []
             for message in sms_list:
@@ -351,7 +375,9 @@ class Gateway:
             _LOG.error(NO_MODEM_FOUND)
             raise ModemGatewayException(NO_MODEM_FOUND)
 
-        messaging = mm_object.get_modem_messaging()  # TODO we should have this in scope
+        # messaging = mm_object.get_modem_messaging()
+        # # TODO we should have this in scope
+        messaging = self._messaging
         messaging.call_delete_sync(message_path)
         _LOG.info('Deleted SMS ' + message_path)
 

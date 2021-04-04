@@ -6,7 +6,7 @@ from .const import DOMAIN, MODEM_GATEWAY, CONF_REMOVE_INCOMING_SMS
 
 from homeassistant.helpers.entity import Entity
 
-from homeassistant.components import logbook
+# from homeassistant.components import logbook
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
@@ -43,6 +43,8 @@ class GsmModemSmsSensor(Entity):
         self._processed_messages = set()
         hass.bus.async_listen("mm_modem_sms_received",
                               self._handle_sms_received)
+        _LOGGER.info('Sms sensor up')
+        self.update()
 
     def get_gateway(self):
         """Returns the modem gateway instance from hass scope"""
@@ -100,12 +102,13 @@ class GsmModemSmsSensor(Entity):
                     _LOGGER.info(message.path)
                     self._processed_messages.update({message.path})
                     _LOGGER.info(self._processed_messages)
-                    self._hass.services.call(logbook.DOMAIN, 'log', {
-                                            logbook.ATTR_NAME: SENSOR_NAME,
-                                            logbook.ATTR_MESSAGE: message.text,
-                                            logbook.ATTR_DOMAIN: DOMAIN,
-                                            logbook.ATTR_ENTITY_ID: SENSOR_ID
-                                            }, True)
+                    # self._hass.services.call(logbook.DOMAIN, 'log', {
+                    #                         logbook.ATTR_NAME: SENSOR_NAME,
+                    #                         logbook.ATTR_MESSAGE:
+                    #                         message.text,
+                    #                         logbook.ATTR_DOMAIN: DOMAIN,
+                    #                         logbook.ATTR_ENTITY_ID: SENSOR_ID
+                    #                         }, True)
                     self._hass.bus.async_fire(DOMAIN + '_incoming_sms',
                                               {'path': message.path,
                                                'number': message.number,
