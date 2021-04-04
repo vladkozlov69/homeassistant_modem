@@ -8,6 +8,7 @@ from homeassistant.core import callback
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.config_entries import SOURCE_IMPORT
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 
 from .const import (
     DOMAIN,
@@ -114,6 +115,8 @@ async def async_setup_entry(hass, config_entry):
 
     hass.data[DOMAIN][MODEM_GATEWAY] = gateway
 
+    await gateway.async_added_to_hass()
+
     hass.services.async_register(DOMAIN,
                                  'send_sms',
                                  handle_send_sms,
@@ -131,5 +134,8 @@ async def async_setup_entry(hass, config_entry):
     hass.services.async_register(DOMAIN,
                                  'lte_down',
                                  handle_lte_down)
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP,
+                               gateway.signal_handler)
 
     return True
