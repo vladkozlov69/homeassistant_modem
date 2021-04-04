@@ -33,6 +33,13 @@ class Gateway:
     _glib_main_loop = None
     _initializing = True
     _available = False
+    _messaging = None
+    # IDs for added/removed signals
+    _object_added_id = 0
+    _object_removed_id = 0
+    # ID for notify signal
+    _messaging_notify_id = 0
+
     obj = None
 
     async def async_added_to_hass(self):
@@ -54,13 +61,6 @@ class Gateway:
         self._manager = ModemManager.Manager.new_sync(
             connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START,
             None)
-
-        # IDs for added/removed signals
-        self.object_added_id = 0
-        self.object_removed_id = 0
-
-        # ID for notify signal
-        self.msging_notify_id = 0
 
         self._available = False
         self._manager.connect('notify::name-owner', self.on_name_owner)
@@ -108,8 +108,8 @@ class Gateway:
             else:
                 _LOG.info('on_object_added %s' % modem)
                 self.obj = obj
-                self.msging = obj.get_modem_messaging()
-                self.msging_notify_id = self.msging.connect(
+                self._messaging = obj.get_modem_messaging()
+                self._messaging_notify_id = self._messaging.connect(
                     'notify::messages',
                     self.on_messaging_notify)
 
@@ -117,11 +117,11 @@ class Gateway:
         """ModemManager is now available"""
         if self._available is False or self._initializing:
             _LOG.info('ModemManager service is available in bus')
-        self.object_added_id = self._manager.connect('object-added',
-                                                     self.on_object_added)
-        self.object_removed_id = self._manager.connect('object-removed',
-                                                       self.on_object_removed)
-        self.available = True
+        self._object_added_id = self._manager.connect('object-added',
+                                                      self.on_object_added)
+        self._object_removed_id = self._manager.connect('object-removed',
+                                                        self.on_object_removed)
+        self._available = True
 
         # Initial scan
         if (self._initializing):
@@ -134,16 +134,16 @@ class Gateway:
             _LOG.warn('ModemManager service not available in bus')
             self.obj = None
 
-        if self.object_added_id:
-            self._manager.disconnect(self.object_added_id)
-            self.object_added_id = 0
-        if self.object_removed_id:
-            self._manager.disconnect(self.object_removed_id)
-            self.object_removed_id = 0
+        if self._object_added_id:
+            self._manager.disconnect(self._object_added_id)
+            self._object_added_id = 0
+        if self._object_removed_id:
+            self._manager.disconnect(self._object_removed_id)
+            self._object_removed_id = 0
 
-        if self.msging_notify_id:
-            self.msging.disconnect(self.msging_notify_id)
-            self.msging_notify_id = 0
+        if self._messaging_notify_id:
+            self._messaging.disconnect(self._messaging_notify_id)
+            self._messaging_notify_id = 0
 
         self.available = False
 
@@ -152,11 +152,11 @@ class Gateway:
         _LOG.warn('modem unmanaged by ModemManager: %s'
                   % obj.get_object_path())
 
-        self.msging.disconnect(self.msging_notify_id)
-        self.msging_notify_id = 0
+        self._messaging.disconnect(self._messaging_notify_id)
+        self._messaging_notify_id = 0
 
         self.obj = None
-        self.msging = None
+        self._messaging = None
 
     def on_messaging_notify(self, manager, obj):
         """Messaging callback"""
