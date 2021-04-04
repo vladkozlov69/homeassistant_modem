@@ -82,8 +82,6 @@ class Gateway:
             time.sleep(1)
         user_data[0][0].quit()
 
-
-
     def on_name_owner(self, manager, prop):
         """Name owner updates"""
         _LOG.info('on_name_owner')
@@ -142,7 +140,7 @@ class Gateway:
             self._messaging.disconnect(self._messaging_notify_id)
             self._messaging_notify_id = 0
 
-        self.available = False
+        self._available = False
 
     def on_object_removed(self, manager, obj):
         """Modem disconnected"""
