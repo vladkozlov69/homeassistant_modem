@@ -330,7 +330,7 @@ class Gateway:
         mm_object = self.get_mm_object(False)
         if mm_object is not None:
 
-            messaging = mm_object.get_modem_messaging()
+            messaging = mm_object.get_modem_messaging()  # TODO we should have this in scope
             sms_list = messaging.list_sync(None)
             messages = []
             for message in sms_list:
@@ -352,7 +352,7 @@ class Gateway:
             _LOG.error(NO_MODEM_FOUND)
             raise ModemGatewayException(NO_MODEM_FOUND)
 
-        messaging = mm_object.get_modem_messaging()
+        messaging = mm_object.get_modem_messaging()  # TODO we should have this in scope
         messaging.call_delete_sync(message_path)
         _LOG.info('Deleted SMS ' + message_path)
 
