@@ -159,6 +159,7 @@ class Gateway:
         if self._modem_object:
             # msgs = self.obj.get_modem_messaging()
             _LOG.info('Got SMS')  # TODO send event to sensor
+            self._hass.bus.async_fire('mm_modem_sms_received', {})
 
     def get_mm_object(self, show_warning=True):
         """Gets ModemManager object"""

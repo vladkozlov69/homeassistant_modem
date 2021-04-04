@@ -41,6 +41,8 @@ class GsmModemSmsSensor(Entity):
         else:
             self._remove_inc_sms = False
         self._processed_messages = set()
+        hass.bus.async_listen("mm_modem_sms_received",
+                              self._handle_sms_received)
 
     def get_gateway(self):
         """Returns the modem gateway instance from hass scope"""
@@ -68,6 +70,16 @@ class GsmModemSmsSensor(Entity):
         is lowercase snake_case.
         """
         return {}
+
+    @property
+    def should_poll(self):
+        """No polling needed."""
+        return False
+
+    async def _handle_sms_received(self, call):
+        _LOGGER.info("sms received")
+        self.update()
+        self.async_write_ha_state()
 
     def update(self):
         """Fetch new state data for the sensor.
