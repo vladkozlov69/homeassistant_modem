@@ -136,6 +136,6 @@ async def async_setup_entry(hass, config_entry):
                                  handle_lte_down)
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP,
-                               gateway.signal_handler)
+                               gateway.stop_glib_loop)
 
     return True

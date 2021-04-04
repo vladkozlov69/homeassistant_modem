@@ -5,6 +5,7 @@ import gi
 import NetworkManager
 import time
 
+from homeassistant.core import callback
 from .const import ATTR_CONNECTION_NAME
 from .sms_message import SmsMessage
 
@@ -40,21 +41,26 @@ class Gateway:
     # ID for notify signal
     _messaging_notify_id = 0
 
-    obj = None
+    _modem_object = None
+
+    def __init__(self, config_entry, hass):
+        """Initialize the sms gateway."""
+        self._hass = hass
+        self._config_entry = config_entry
 
     async def async_added_to_hass(self):
         """Handle when an entity is about to be added to Home Assistant."""
-
         self._glib_loop_task = self._hass.loop.create_task(
             self.glib_loop_task()
         )
 
-    def signal_handler(self, data):
-        _LOG.info('signal_handler')
-        self._glib_main_loop.quit()
+    @callback
+    def stop_glib_loop(self, event):
+        """Close resources."""
+        if (self._glib_main_loop is not None):
+            self._glib_main_loop.quit()
 
     async def glib_loop_task(self):
-        _LOG.info('glib_loop_task')
         """GLib loop."""
         self._initializing = True
         connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
@@ -65,15 +71,9 @@ class Gateway:
         self._available = False
         self._manager.connect('notify::name-owner', self.on_name_owner)
         self.on_name_owner(self._manager, None)
-        _LOG.debug('Starting GLib.MainLoop task')
         self._initializing = False
-
         self._glib_main_loop = GLib.MainLoop()
-
-        _LOG.info('glib_loop_task start')
         self._glib_main_loop.run()
-
-        _LOG.info('glib_loop_task end')
 
     def on_call_started(self, source_object, res, *user_data):
         """Callback method called when GSM call initiated"""
@@ -82,10 +82,7 @@ class Gateway:
             time.sleep(1)
         user_data[0][0].quit()
 
-    def __init__(self, config_entry, hass):
-        """Initialize the sms gateway."""
-        self._hass = hass
-        self._config_entry = config_entry
+
 
     def on_name_owner(self, manager, prop):
         """Name owner updates"""
@@ -100,14 +97,14 @@ class Gateway:
     """
     def on_object_added(self, manager, obj):
         _LOG.info('on_object_added')
-        if self.obj is None:
+        if self._modem_object is None:
             modem = obj.get_modem()
             if modem.get_state() == ModemManager.ModemState.FAILED:
                 _LOG.error('%s ignoring failed modem' % obj.get_object_path())
                 pass
             else:
                 _LOG.info('on_object_added %s' % modem)
-                self.obj = obj
+                self._modem_object = obj
                 self._messaging = obj.get_modem_messaging()
                 self._messaging_notify_id = self._messaging.connect(
                     'notify::messages',
@@ -132,7 +129,7 @@ class Gateway:
         """ModemManager is now unavailable"""
         if self._available or self._initializing:
             _LOG.warn('ModemManager service not available in bus')
-            self.obj = None
+            self._modem_object = None
 
         if self._object_added_id:
             self._manager.disconnect(self._object_added_id)
@@ -155,31 +152,31 @@ class Gateway:
         self._messaging.disconnect(self._messaging_notify_id)
         self._messaging_notify_id = 0
 
-        self.obj = None
+        self._modem_object = None
         self._messaging = None
 
     def on_messaging_notify(self, manager, obj):
         """Messaging callback"""
         _LOG.info('on_messaging_notify')
-        if self.obj:
+        if self._modem_object:
             # msgs = self.obj.get_modem_messaging()
-            _LOG.info('Got SMS')
+            _LOG.info('Got SMS')  # TODO send event to sensor
 
-    @staticmethod
-    def get_mm_object(show_warning=True):
+    def get_mm_object(self, show_warning=True):
         """Gets ModemManager object"""
-        connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-        manager = ModemManager.Manager.new_sync(
-            connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START,
-            None)
-        if manager.get_name_owner() is None:
-            _LOG.error("ModemManager not found in bus")
-            return None
-        if (len(manager.get_objects()) == 0):
-            if (show_warning):
-                _LOG.warning("Modem is not connected")
-            return None
-        return manager.get_objects()[0]
+        return self._modem_object
+        # connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        # manager = ModemManager.Manager.new_sync(
+        #     connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START,
+        #     None)
+        # if manager.get_name_owner() is None:
+        #     _LOG.error("ModemManager not found in bus")
+        #     return None
+        # if (len(manager.get_objects()) == 0):
+        #     if (show_warning):
+        #         _LOG.warning("Modem is not connected")
+        #     return None
+        # return manager.get_objects()[0]
 
     def get_mm_modem(self, show_warning=True):
         """Gets ModemManager modem"""
