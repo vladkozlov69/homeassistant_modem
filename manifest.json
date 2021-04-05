@@ -3,7 +3,7 @@
   "name": "ModemManager interface (SMS, Calls)",
   "documentation": "https://github.com/vladkozlov69/homeassistant_modem",
   "requirements": ["python-networkmanager==2.2"],
-  "codeowners": ["@vkozloff"],
+  "codeowners": ["@vladkozlov69"],
   "config_flow": true,
-  "version": "0.0.2"
+  "version": "1.0.0"
 }
