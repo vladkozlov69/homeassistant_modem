@@ -22,7 +22,7 @@ SENSOR_NAME = 'GSM Modem SMS'
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensors."""
-    _LOGGER.info(config_entry.data)
+    _LOGGER.debug(config_entry.data)
     async_add_entities([GsmModemSmsSensor(hass, config_entry)])
 
 
@@ -42,7 +42,7 @@ class GsmModemSmsSensor(Entity):
         self._processed_messages = set()
         hass.bus.async_listen(EVT_SMS_RECEIVED,
                               self._handle_sms_received)
-        _LOGGER.info('Sms sensor up')
+        _LOGGER.debug('Sms sensor up')
         self.update()
 
     def get_gateway(self):

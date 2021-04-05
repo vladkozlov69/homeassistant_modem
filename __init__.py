@@ -46,7 +46,7 @@ MM_DIAL_SERVICE_SCHEMA = vol.Schema(
 
 MM_LTE_SERVICE_SCHEMA = vol.Schema(
     {
-        vol.Required(ATTR_CONNECTION_NAME): cv.string,
+        vol.Optional(ATTR_CONNECTION_NAME): cv.string,
     }
 )
 
@@ -58,7 +58,7 @@ async def async_setup(hass, config):
     """Import integration from config."""
 
     if DOMAIN in config:
-        _LOGGER.info(config[DOMAIN])
+        _LOGGER.debug(config[DOMAIN])
         hass.async_create_task(
             hass.config_entries.flow.async_init(
                 DOMAIN, context={"source": SOURCE_IMPORT}, data=config[DOMAIN]
@@ -69,8 +69,6 @@ async def async_setup(hass, config):
 
 async def async_setup_entry(hass, config_entry):
     """Set up the LTE Modem component."""
-
-    print("async_setup_entry => %s" % config_entry.data)
 
     @callback
     async def handle_send_sms(call):
@@ -95,13 +93,13 @@ async def async_setup_entry(hass, config_entry):
         await dialer_service.dial(number)
 
     @callback
-    async def handle_lte_up():
+    async def handle_lte_up(call):
         """Handle the service call."""
         lte_service = get_lte_service(hass)
         await lte_service.lte_up()
 
     @callback
-    async def handle_lte_down():
+    async def handle_lte_down(call):
         """Handle the service call."""
         lte_service = get_lte_service(hass)
         await lte_service.lte_down()
@@ -118,11 +116,7 @@ async def async_setup_entry(hass, config_entry):
 
     hass.data.setdefault(DOMAIN, {})
 
-    _LOGGER.info("Before create_modem_gateway")
-
     gateway = create_modem_gateway(config_entry, hass)
-
-    _LOGGER.info("After create_modem_gateway")
 
     if not gateway:
         return False

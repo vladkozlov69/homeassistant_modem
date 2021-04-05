@@ -4,7 +4,6 @@ import logging
 import gi
 import NetworkManager
 import time
-
 import threading
 
 from homeassistant.core import callback
@@ -24,6 +23,9 @@ gi.require_version("NM", "1.0")
 
 from gi.repository import GLib, Gio, ModemManager
 
+from dbus.mainloop.glib import DBusGMainLoop
+
+DBusGMainLoop(set_as_default=True)
 
 _LOG = logging.getLogger(__name__)
 _LOG.setLevel(logging.DEBUG)
@@ -45,7 +47,6 @@ class Gateway:
     _object_removed_id = 0
     # ID for notify signal
     _messaging_notify_id = 0
-
     _modem_object = None
 
     def __init__(self, config_entry, hass):
@@ -55,23 +56,23 @@ class Gateway:
 
     async def async_added_to_hass(self):
         """Handle when an entity is about to be added to Home Assistant."""
-        await self.async_glib_loop_task()
+        await self.async_start_glib()
 
     @callback
     def stop_glib_loop(self, event):
         """Close resources."""
         self._do_stop = True
 
-    def thread_function(self, loop):
-        _LOG.info("Thread : starting")
+    def glib_loop_function(self, loop):
+        _LOG.debug("GLib loop : starting")
         while self._do_stop is False:
             context = loop.get_context()
             if context.pending():
                 context.iteration(False)
-            time.sleep(0.001)
-        _LOG.info("Thread : finishing")
+            time.sleep(0.01)
+        _LOG.info("GLib loop : closed")
 
-    async def async_glib_loop_task(self):
+    async def async_start_glib(self):
         """GLib loop."""
         self._initializing = True
         connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
@@ -84,7 +85,7 @@ class Gateway:
         self.on_name_owner(self._manager, None)
         self._initializing = False
         main_loop = GLib.MainLoop()
-        threading.Thread(target=self.thread_function,
+        threading.Thread(target=self.glib_loop_function,
                          args=(main_loop,)).start()
 
     def on_call_started(self, source_object, res, *user_data):
@@ -95,7 +96,6 @@ class Gateway:
 
     def on_name_owner(self, manager, prop):
         """Name owner updates"""
-        _LOG.info('on_name_owner')
         if self._manager.get_name_owner():
             self.set_available()
         else:
@@ -103,14 +103,13 @@ class Gateway:
 
     def on_object_added(self, manager, obj):
         """Object added"""
-        _LOG.info('on_object_added')
         if self._modem_object is None:
             modem = obj.get_modem()
             if modem.get_state() == ModemManager.ModemState.FAILED:
                 _LOG.error('%s ignoring failed modem' % obj.get_object_path())
                 pass
             else:
-                _LOG.info('on_object_added %s' % modem)
+                _LOG.info('Modem added to bus %s' % modem)
                 self._modem_object = obj
                 self._messaging = obj.get_modem_messaging()
                 self._messaging_notify_id = self._messaging.connect(
@@ -242,15 +241,17 @@ class Gateway:
 
     def lte_up(self):
         """LTE Up."""
-        conn_name = self._config_entry.options[ATTR_CONNECTION_NAME]
+        conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
         if _LOG.isEnabledFor(logging.DEBUG):
             _LOG.debug("connection name: %s", conn_name)
 
         # Find the connection
+        _LOG.debug('At====== 1')
         connections = NetworkManager.Settings.ListConnections()
+        _LOG.debug('At====== 2')
         connections = {x.GetSettings()['connection']['id']: x
                        for x in connections}
-
+        _LOG.debug('At====== 3')
         conn = connections.get(conn_name)
 
         if conn is None:
@@ -292,7 +293,7 @@ class Gateway:
         # list of devices with active connection
         devices = list(filter(lambda _dev: _dev.ActiveConnection is not None
                               and _dev.ActiveConnection.Id ==
-                              self._config_entry.options[ATTR_CONNECTION_NAME],
+                              self._config_entry.data[ATTR_CONNECTION_NAME],
                               NetworkManager.NetworkManager.GetAllDevices()))
 
         # print the list
