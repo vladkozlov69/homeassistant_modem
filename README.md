@@ -41,6 +41,11 @@ Action=org.freedesktop.ModemManager1.*
 ResultAny=yes
 ResultActive=yes
 ResultInactive=yes
+
+[NetworkManager]
+Identity=unix-user:*
+Action=org.freedesktop.NetworkManager.*
+ResultAny=yes
 =========
 
 
