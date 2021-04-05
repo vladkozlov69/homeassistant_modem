@@ -99,4 +99,5 @@ class GsmModemSmsSensor(Entity):
                                                'number': message.number,
                                                'timestamp': message.timestamp,
                                                'text': message.text})
-                    gateway.delete_sms_message(message.path)
+                    if (self._remove_inc_sms):
+                        gateway.delete_sms_message(message.path)
