@@ -12,6 +12,8 @@ from .const import (
     ATTR_CONNECTION_NAME,
     EVT_MODEM_CONNECTED,
     EVT_MODEM_DISCONNECTED,
+    EVT_LTE_CONNECTED,
+    EVT_LTE_DISCONNECTED,
     EVT_SMS_RECEIVED
 )
 
@@ -165,11 +167,6 @@ class Gateway:
 
     def on_messaging_notify(self, manager, obj):
         """Messaging callback"""
-        _LOG.info(obj)
-        _LOG.info(obj.value_type)
-        _LOG.info(obj.flags)
-        _LOG.info(obj.blurb)
-        _LOG.info(dir(obj))
         if (obj.name == 'messages'):
             self._hass.bus.async_fire(EVT_SMS_RECEIVED, {})
         else:
@@ -246,12 +243,9 @@ class Gateway:
             _LOG.debug("connection name: %s", conn_name)
 
         # Find the connection
-        _LOG.debug('At====== 1')
         connections = NetworkManager.Settings.ListConnections()
-        _LOG.debug('At====== 2')
         connections = {x.GetSettings()['connection']['id']: x
                        for x in connections}
-        _LOG.debug('At====== 3')
         conn = connections.get(conn_name)
 
         if conn is None:
@@ -287,14 +281,12 @@ class Gateway:
 
         # And connect
         NetworkManager.NetworkManager.ActivateConnection(conn, dev, "/")
+        self._hass.bus.async_fire(EVT_LTE_CONNECTED, {})
 
     def lte_down(self):
         """LTE Down."""
         # list of devices with active connection
-        devices = list(filter(lambda _dev: _dev.ActiveConnection is not None
-                              and _dev.ActiveConnection.Id ==
-                              self._config_entry.data[ATTR_CONNECTION_NAME],
-                              NetworkManager.NetworkManager.GetAllDevices()))
+        devices = self.get_lte_devices()
 
         # print the list
         for index, device in enumerate(devices):
@@ -305,16 +297,30 @@ class Gateway:
             active_conn = devices[0].ActiveConnection
             print(active_conn.Id)
             NetworkManager.NetworkManager.DeactivateConnection(active_conn)
+            self._hass.bus.async_fire(EVT_LTE_DISCONNECTED, {})
 
         else:
             _LOG.warning('No active LTE connection found')
+
+    def get_lte_state(self):
+        devices = self.get_lte_devices()
+
+        # print the list
+        for index, device in enumerate(devices):
+            _LOG.info("%s) %s Active:%s",
+                      index, device.Interface, device.ActiveConnection.Id)
+
+        if devices:
+            return True
+        else:
+            return False
 
     def get_lte_devices(self):
         """Returns list of LTE devices"""
         all_devices = NetworkManager.NetworkManager.GetAllDevices()
         return list(filter(lambda _dev: _dev.ActiveConnection is not None
                            and _dev.ActiveConnection.Id ==
-                           self._config_entry.options[ATTR_CONNECTION_NAME],
+                           self._config_entry.data[ATTR_CONNECTION_NAME],
                            all_devices))
 
     def get_sms_messages(self):

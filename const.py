@@ -13,4 +13,6 @@ CONF_REMOVE_INCOMING_SMS = 'remove_incoming_sms'
 
 EVT_MODEM_CONNECTED = DOMAIN + '_modem_connected'
 EVT_MODEM_DISCONNECTED = DOMAIN + '_modem_disconnected'
+EVT_LTE_CONNECTED = DOMAIN + '_lte_connected'
+EVT_LTE_DISCONNECTED = DOMAIN + '_lte_disconnected'
 EVT_SMS_RECEIVED = DOMAIN + '_sms_received'
