@@ -2,7 +2,12 @@
 
 import logging
 
-from .const import DOMAIN, MODEM_GATEWAY, CONF_REMOVE_INCOMING_SMS
+from .const import (
+    DOMAIN, 
+    MODEM_GATEWAY, 
+    CONF_REMOVE_INCOMING_SMS,
+    EVT_SMS_RECEIVED
+)
 
 from homeassistant.helpers.entity import Entity
 
@@ -35,7 +40,7 @@ class GsmModemSmsSensor(Entity):
         else:
             self._remove_inc_sms = False
         self._processed_messages = set()
-        hass.bus.async_listen(DOMAIN + '_sms_received',
+        hass.bus.async_listen(EVT_SMS_RECEIVED,
                               self._handle_sms_received)
         _LOGGER.info('Sms sensor up')
         self.update()
@@ -93,16 +98,8 @@ class GsmModemSmsSensor(Entity):
                          str(self._remove_inc_sms))
             for message in self._messages:
                 if message.path not in self._processed_messages:
-                    _LOGGER.info(message.path)
+                    _LOGGER.debug(message.path)
                     self._processed_messages.update({message.path})
-                    _LOGGER.info(self._processed_messages)
-                    # self._hass.services.call(logbook.DOMAIN, 'log', {
-                    #                         logbook.ATTR_NAME: SENSOR_NAME,
-                    #                         logbook.ATTR_MESSAGE:
-                    #                         message.text,
-                    #                         logbook.ATTR_DOMAIN: DOMAIN,
-                    #                         logbook.ATTR_ENTITY_ID: SENSOR_ID
-                    #                         }, True)
                     logbook.async_log_entry(
                         self._hass,
                         SENSOR_NAME,

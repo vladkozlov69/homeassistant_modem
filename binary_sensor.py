@@ -2,7 +2,12 @@
 
 import logging
 
-from .const import DOMAIN, MODEM_GATEWAY
+from .const import (
+    DOMAIN, 
+    MODEM_GATEWAY,
+    EVT_MODEM_CONNECTED,
+    EVT_MODEM_DISCONNECTED
+)
 
 from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_CONNECTIVITY,
@@ -41,19 +46,17 @@ class GsmModemSensor(BinarySensorEntity):
         """Initialize the sensor."""
         self._state = None
         self._hass = hass
-        hass.bus.async_listen("mm_modem_disconnected",
+        hass.bus.async_listen(EVT_MODEM_DISCONNECTED,
                               self._handle_modem_disconnected)
 
-        hass.bus.async_listen("mm_modem_connected",
+        hass.bus.async_listen(EVT_MODEM_CONNECTED,
                               self._handle_modem_connected)
 
     async def _handle_modem_disconnected(self, call):
-        _LOGGER.info("_handle_modem_disconnected")
         self.update()
         self.async_write_ha_state()
 
     async def _handle_modem_connected(self, call):
-        _LOGGER.info("_handle_modem_connected")
         self.update()
         self.async_write_ha_state()
 

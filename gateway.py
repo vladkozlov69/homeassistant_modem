@@ -8,7 +8,14 @@ import time
 import threading
 
 from homeassistant.core import callback
-from .const import ATTR_CONNECTION_NAME
+
+from .const import (
+    ATTR_CONNECTION_NAME,
+    EVT_MODEM_CONNECTED,
+    EVT_MODEM_DISCONNECTED,
+    EVT_SMS_RECEIVED
+)
+
 from .sms_message import SmsMessage
 
 gi.require_version('ModemManager', '1.0')
@@ -36,7 +43,6 @@ class Gateway:
     _config_entry = None
     _manager = None
     _glib_loop_task = None
-    _glib_main_loop = None
     _initializing = True
     _available = False
     _messaging = None
@@ -56,15 +62,14 @@ class Gateway:
 
     async def async_added_to_hass(self):
         """Handle when an entity is about to be added to Home Assistant."""
-        self._glib_loop_task = self._hass.loop.create_task(
-            self.async_glib_loop_task()
-        )
+        # self._glib_loop_task = self._hass.loop.create_task(
+        #     self.async_glib_loop_task()
+        # )
+        await self.async_glib_loop_task()
 
     @callback
     def stop_glib_loop(self, event):
         """Close resources."""
-        if (self._glib_main_loop is not None):
-            self._glib_main_loop.quit()
         self._do_stop = True
 
     def thread_function(self, loop):
@@ -73,8 +78,7 @@ class Gateway:
             context = loop.get_context()
             if context.pending():
                 context.iteration(False)
-            time.sleep(0.01)
-        # loop.run()
+            time.sleep(0.001)
         _LOG.info("Thread : finishing")
 
     async def async_glib_loop_task(self):
@@ -89,19 +93,16 @@ class Gateway:
         self._manager.connect('notify::name-owner', self.on_name_owner)
         self.on_name_owner(self._manager, None)
         self._initializing = False
-        self._glib_main_loop = GLib.MainLoop()
-        _LOG.info('_glib_main_loop.run')
-        x = threading.Thread(target=self.thread_function,
-                             args=(self._glib_main_loop,))
-        x.start()
-        _LOG.info('_glib_main_loop.run exit')
+        main_loop = GLib.MainLoop()
+        threading.Thread(target=self.thread_function,
+                         args=(main_loop,)).start()
 
     def on_call_started(self, source_object, res, *user_data):
         """Callback method called when GSM call initiated"""
         for x in range(1, 20):  # TODO: make this configurable
             print(source_object.get_state(), user_data[0][1].get_state())
             time.sleep(1)
-        user_data[0][0].quit()
+        # user_data[0][0].quit()
 
     def on_name_owner(self, manager, prop):
         """Name owner updates"""
@@ -126,7 +127,7 @@ class Gateway:
                 self._messaging_notify_id = self._messaging.connect(
                     'notify::messages',
                     self.on_messaging_notify)
-                self._hass.bus.async_fire('mm_modem_connected', {})
+                self._hass.bus.async_fire(EVT_MODEM_CONNECTED, {})
 
     def set_available(self):
         """ModemManager is now available"""
@@ -172,38 +173,28 @@ class Gateway:
 
         self._modem_object = None
         self._messaging = None
-        self._hass.bus.async_fire('mm_modem_disconnected', {})
+        self._hass.bus.async_fire(EVT_MODEM_DISCONNECTED, {})
 
     def on_messaging_notify(self, manager, obj):
         """Messaging callback"""
-        _LOG.info('on_messaging_notify')
-        # if self._modem_object:
-        # msgs = self.obj.get_modem_messaging()
-        _LOG.info('Got SMS')  # TODO send event to sensor
-        self._hass.bus.async_fire('mm_modem_sms_received', {})
         _LOG.info(obj)
+        _LOG.info(obj.value_type)
+        _LOG.info(obj.flags)
+        _LOG.info(obj.blurb)
+        _LOG.info(dir(obj))
+        if (obj.name == 'messages'):
+            self._hass.bus.async_fire(EVT_SMS_RECEIVED, {})
+        else:
+            _LOG.warn('Unknown messaging notification: [%s]' % obj)
 
-    def get_mm_object(self, show_warning=True):
-        """Gets ModemManager object"""
-        return self._modem_object
-        # connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-        # manager = ModemManager.Manager.new_sync(
-        #     connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START,
-        #     None)
-        # if manager.get_name_owner() is None:
-        #     _LOG.error("ModemManager not found in bus")
-        #     return None
-        # if (len(manager.get_objects()) == 0):
-        #     if (show_warning):
-        #         _LOG.warning("Modem is not connected")
-        #     return None
-        # return manager.get_objects()[0]
+    # def get_mm_object(self, show_warning=True):
+    #     """Gets ModemManager object"""
+    #     return self._modem_object
 
     def get_mm_modem(self, show_warning=True):
         """Gets ModemManager modem"""
-        mm_object = self.get_mm_object(show_warning)
-        if mm_object is not None:
-            return mm_object.get_modem()
+        if self._modem_object is not None:
+            return self._modem_object.get_modem()
         if show_warning:
             _LOG.warning(NO_MODEM_FOUND)
         return None
@@ -214,24 +205,30 @@ class Gateway:
         sms_properties.set_number(number)
         sms_properties.set_text(message)
 
-        mm_object = self.get_mm_object()
-        if mm_object is None:
+        # mm_object = self.get_mm_object()
+        # if mm_object is None:
+        #     _LOG.error(NO_MODEM_FOUND)
+        #     raise ModemGatewayException(NO_MODEM_FOUND)
+
+        messaging = self._messaging
+        if messaging is not None:
+            sms = messaging.create_sync(sms_properties)
+            sms.send_sync()
+            _LOG.info('%s: sms sent', messaging.get_object_path())
+        else:
             _LOG.error(NO_MODEM_FOUND)
             raise ModemGatewayException(NO_MODEM_FOUND)
+        #  mm_object.get_modem_messaging()
 
-        messaging = mm_object.get_modem_messaging()
 
-        sms = messaging.create_sync(sms_properties)
-        sms.send_sync()
-        _LOG.info('%s: sms sent', messaging.get_object_path())
 
     def dial_voice(self, number):
         """Initiale voice call"""
         call_properties = ModemManager.CallProperties.new()
         call_properties.set_number(number)
-        main_loop = GLib.MainLoop()
+        # main_loop = GLib.MainLoop()
 
-        mm_object = self.get_mm_object()
+        mm_object = self._modem_object
         if mm_object is None:
             _LOG.error(NO_MODEM_FOUND)
             raise ModemGatewayException(NO_MODEM_FOUND)
@@ -241,10 +238,10 @@ class Gateway:
         try:
             call = voice.create_call_sync(call_properties, None)
             call.start(cancellable=None, callback=self.on_call_started,
-                       user_data=(main_loop, call_properties))
-            main_loop.run()
+                       user_data=(None, call_properties))
+            # main_loop.run()
         except Exception as e:
-            main_loop.quit()
+            # main_loop.quit()
             _LOG.error(e)
         finally:
             print('cleanup current call:', call.get_path())
@@ -348,13 +345,8 @@ class Gateway:
                            all_devices))
 
     def get_sms_messages(self):
-        mm_object = self.get_mm_object(False)
-        if mm_object is not None:
-
-            messaging = self._messaging
-            # mm_object.get_modem_messaging()
-            # # TODO we should have this in scope
-            sms_list = messaging.list_sync(None)
+        if self._messaging is not None:
+            sms_list = self._messaging.list_sync(None)
             messages = []
             for message in sms_list:
                 if(ModemManager.SmsState.RECEIVED == message.get_state()):
@@ -370,15 +362,11 @@ class Gateway:
             return None
 
     def delete_sms_message(self, message_path):
-        mm_object = self.get_mm_object()
-        if mm_object is None:
+        if self._messaging is None:
             _LOG.error(NO_MODEM_FOUND)
             raise ModemGatewayException(NO_MODEM_FOUND)
 
-        # messaging = mm_object.get_modem_messaging()
-        # # TODO we should have this in scope
-        messaging = self._messaging
-        messaging.call_delete_sync(message_path)
+        self._messaging.call_delete_sync(message_path)
         _LOG.info('Deleted SMS ' + message_path)
 
 
