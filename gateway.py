@@ -17,25 +17,18 @@ from .const import (
 )
 
 from .sms_message import SmsMessage
+from .exceptions import GSMGatewayException
 
 gi.require_version('ModemManager', '1.0')
 gi.require_version("NM", "1.0")
 
 from gi.repository import GLib, Gio, ModemManager
 
-# from homeassistant.core import callback
-
-# import glibcoro
-# glibcoro.install()
 
 _LOG = logging.getLogger(__name__)
 _LOG.setLevel(logging.DEBUG)
 
 NO_MODEM_FOUND = "No modem found"
-
-
-class ModemGatewayException(Exception):
-    """Modem Gateway exception."""
 
 
 class Gateway:
@@ -62,9 +55,6 @@ class Gateway:
 
     async def async_added_to_hass(self):
         """Handle when an entity is about to be added to Home Assistant."""
-        # self._glib_loop_task = self._hass.loop.create_task(
-        #     self.async_glib_loop_task()
-        # )
         await self.async_glib_loop_task()
 
     @callback
@@ -102,7 +92,6 @@ class Gateway:
         for x in range(1, 20):  # TODO: make this configurable
             print(source_object.get_state(), user_data[0][1].get_state())
             time.sleep(1)
-        # user_data[0][0].quit()
 
     def on_name_owner(self, manager, prop):
         """Name owner updates"""
@@ -187,10 +176,6 @@ class Gateway:
         else:
             _LOG.warn('Unknown messaging notification: [%s]' % obj)
 
-    # def get_mm_object(self, show_warning=True):
-    #     """Gets ModemManager object"""
-    #     return self._modem_object
-
     def get_mm_modem(self, show_warning=True):
         """Gets ModemManager modem"""
         if self._modem_object is not None:
@@ -205,11 +190,6 @@ class Gateway:
         sms_properties.set_number(number)
         sms_properties.set_text(message)
 
-        # mm_object = self.get_mm_object()
-        # if mm_object is None:
-        #     _LOG.error(NO_MODEM_FOUND)
-        #     raise ModemGatewayException(NO_MODEM_FOUND)
-
         messaging = self._messaging
         if messaging is not None:
             sms = messaging.create_sync(sms_properties)
@@ -217,21 +197,17 @@ class Gateway:
             _LOG.info('%s: sms sent', messaging.get_object_path())
         else:
             _LOG.error(NO_MODEM_FOUND)
-            raise ModemGatewayException(NO_MODEM_FOUND)
-        #  mm_object.get_modem_messaging()
-
-
+            raise GSMGatewayException(NO_MODEM_FOUND)
 
     def dial_voice(self, number):
         """Initiale voice call"""
         call_properties = ModemManager.CallProperties.new()
         call_properties.set_number(number)
-        # main_loop = GLib.MainLoop()
 
         mm_object = self._modem_object
         if mm_object is None:
             _LOG.error(NO_MODEM_FOUND)
-            raise ModemGatewayException(NO_MODEM_FOUND)
+            raise GSMGatewayException(NO_MODEM_FOUND)
 
         voice = mm_object.get_modem_voice()
 
@@ -239,9 +215,7 @@ class Gateway:
             call = voice.create_call_sync(call_properties, None)
             call.start(cancellable=None, callback=self.on_call_started,
                        user_data=(None, call_properties))
-            # main_loop.run()
         except Exception as e:
-            # main_loop.quit()
             _LOG.error(e)
         finally:
             print('cleanup current call:', call.get_path())
@@ -268,7 +242,6 @@ class Gateway:
 
     def lte_up(self):
         """LTE Up."""
-
         conn_name = self._config_entry.options[ATTR_CONNECTION_NAME]
         if _LOG.isEnabledFor(logging.DEBUG):
             _LOG.debug("connection name: %s", conn_name)
@@ -282,7 +255,7 @@ class Gateway:
 
         if conn is None:
             _LOG.warning("No connection name %s found", conn_name)
-            raise ModemGatewayException("No connection %s found" % conn_name)
+            raise GSMGatewayException("No connection %s found" % conn_name)
 
         # Find a suitable device
         ctype = conn.GetSettings()['connection']['type']
@@ -293,8 +266,8 @@ class Gateway:
                     break
             else:
                 _LOG.error("No active, managed device %s found", ctype)
-                raise ModemGatewayException("No active managed device %s found"
-                                            % ctype)
+                raise GSMGatewayException("No active managed device %s found"
+                                          % ctype)
         else:
             dtype = {
                 '802-11-wireless': NetworkManager.NM_DEVICE_TYPE_WIFI,
@@ -323,10 +296,9 @@ class Gateway:
                               NetworkManager.NetworkManager.GetAllDevices()))
 
         # print the list
-        if _LOG.isEnabledFor(logging.INFO):
-            for index, device in enumerate(devices):
-                print(index, ")", device.Interface,
-                      " Active:", device.ActiveConnection.Id)
+        for index, device in enumerate(devices):
+            _LOG.info("%s) %s Active:%s",
+                      index, device.Interface, device.ActiveConnection.Id)
 
         if devices:
             active_conn = devices[0].ActiveConnection
@@ -356,7 +328,6 @@ class Gateway:
                                         text=message.get_text(),
                                         timestamp=message.get_timestamp()
                                     ))
-
             return messages
         else:
             return None
@@ -364,10 +335,10 @@ class Gateway:
     def delete_sms_message(self, message_path):
         if self._messaging is None:
             _LOG.error(NO_MODEM_FOUND)
-            raise ModemGatewayException(NO_MODEM_FOUND)
-
-        self._messaging.call_delete_sync(message_path)
-        _LOG.info('Deleted SMS ' + message_path)
+            raise GSMGatewayException(NO_MODEM_FOUND)
+        else:
+            self._messaging.call_delete_sync(message_path)
+            _LOG.info('Deleted SMS ' + message_path)
 
 
 def create_modem_gateway(config_entry, hass):

@@ -15,7 +15,8 @@ from .const import (
     MODEM_GATEWAY,
     ATTR_PHONE_NUMBER,
     ATTR_MESSAGE,
-    ATTR_CONNECTION_NAME
+    ATTR_CONNECTION_NAME,
+    ATTR_SMS_PATH
 )
 
 from .gateway import create_modem_gateway
@@ -24,10 +25,16 @@ from .dialer import get_dialer_service
 from .lte import get_lte_service
 
 
-MM_SMS_SERVICE_SCHEMA = vol.Schema(
+MM_SEND_SMS_SERVICE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_PHONE_NUMBER): cv.string,
         vol.Required(ATTR_MESSAGE): cv.string,
+    }
+)
+
+MM_DELETE_SMS_SERVICE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_SMS_PATH): cv.string,
     }
 )
 
@@ -72,6 +79,13 @@ async def async_setup_entry(hass, config_entry):
         message = call.data.get(ATTR_MESSAGE)
         sms_service = get_sms_service(hass)
         await sms_service.send_message(number, message)
+
+    @callback
+    async def handle_delete_sms(call):
+        """Handle the sms deleting service call."""
+        path = call.data.get(ATTR_SMS_PATH)
+        sms_service = get_sms_service(hass)
+        await sms_service.delete_message(path)
 
     @callback
     async def handle_dial(call):
@@ -120,7 +134,12 @@ async def async_setup_entry(hass, config_entry):
     hass.services.async_register(DOMAIN,
                                  'send_sms',
                                  handle_send_sms,
-                                 schema=MM_SMS_SERVICE_SCHEMA)
+                                 schema=MM_SEND_SMS_SERVICE_SCHEMA)
+
+    hass.services.async_register(DOMAIN,
+                                 'delete_sms',
+                                 handle_delete_sms,
+                                 schema=MM_DELETE_SMS_SERVICE_SCHEMA)
 
     hass.services.async_register(DOMAIN,
                                  'dial',

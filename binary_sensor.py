@@ -3,7 +3,7 @@
 import logging
 
 from .const import (
-    DOMAIN, 
+    DOMAIN,
     MODEM_GATEWAY,
     EVT_MODEM_CONNECTED,
     EVT_MODEM_DISCONNECTED

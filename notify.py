@@ -22,23 +22,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-# def get_service(hass, config, discovery_info=None):
-#     """Get the SMS notification service."""
-
-#     if MODEM_GATEWAY not in hass.data[DOMAIN]:
-#         _LOGGER.error("SMS gateway not found, cannot initialize service")
-#         return
-
-#     gateway = hass.data[DOMAIN][MODEM_GATEWAY]
-
-#     if discovery_info is None:
-#         number = config[CONF_RECIPIENT]
-#     else:
-#         number = discovery_info[CONF_RECIPIENT]
-
-#     return SMSNotificationService2(gateway, number)
-
-
 def get_sms_service(hass):
     """Get the SMS notification service."""
 
@@ -51,23 +34,6 @@ def get_sms_service(hass):
     return SMSNotificationService(gateway)
 
 
-# class SMSNotificationService2(BaseNotificationService):
-#     """Implement the notification service for SMS."""
-
-#     def __init__(self, gateway, number):
-#         """Initialize the service."""
-#         self.gateway = gateway
-#         self.number = number
-
-#     async def async_send_message(self, message="", **kwargs):
-#         """Send SMS message."""
-#         try:
-#             # Actually send the message
-#             self.gateway.send_sms(self.number, message)
-#         except GSMGatewayException as exc:
-#             _LOGGER.error("Sending to %s failed: %s", self.number, exc)
-
-
 class SMSNotificationService:
     """Implement the notification service for SMS."""
 
@@ -78,3 +44,7 @@ class SMSNotificationService:
     async def send_message(self, number, message):
         """Send SMS message."""
         self.gateway.send_sms(number, message)
+
+    async def delete_message(self, path):
+        """Send SMS message."""
+        self.gateway.delete_sms_message(path)

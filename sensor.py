@@ -3,8 +3,8 @@
 import logging
 
 from .const import (
-    DOMAIN, 
-    MODEM_GATEWAY, 
+    DOMAIN,
+    MODEM_GATEWAY,
     CONF_REMOVE_INCOMING_SMS,
     EVT_SMS_RECEIVED
 )
@@ -78,13 +78,11 @@ class GsmModemSmsSensor(Entity):
         return False
 
     async def _handle_sms_received(self, call):
-        _LOGGER.info('sms received')
         self.update()
         self.async_write_ha_state()
 
     def update(self):
         """Fetch new state data for the sensor.
-
         This is the only method that should fetch new data for Home Assistant.
         """
         gateway = self.get_gateway()
@@ -94,8 +92,8 @@ class GsmModemSmsSensor(Entity):
         else:
             self._messages = messages
             self._state = len(self._messages)
-            _LOGGER.info('CONF_REMOVE_INCOMING_SMS:' +
-                         str(self._remove_inc_sms))
+            _LOGGER.debug('CONF_REMOVE_INCOMING_SMS:' +
+                          str(self._remove_inc_sms))
             for message in self._messages:
                 if message.path not in self._processed_messages:
                     _LOGGER.debug(message.path)

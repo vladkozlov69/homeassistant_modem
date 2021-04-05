@@ -6,6 +6,7 @@ MODEM_GATEWAY = 'MM_MODEM_GATEWAY'
 ATTR_PHONE_NUMBER = 'number'
 ATTR_MESSAGE = 'message'
 ATTR_CONNECTION_NAME = 'connection_name'
+ATTR_SMS_PATH = 'sms_path'
 
 CONF_CONNECTION_NAME = 'connection_name'
 CONF_REMOVE_INCOMING_SMS = 'remove_incoming_sms'
