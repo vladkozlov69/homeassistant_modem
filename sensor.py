@@ -2,7 +2,12 @@
 
 import logging
 
-from .const import DOMAIN, MODEM_GATEWAY, CONF_REMOVE_INCOMING_SMS
+from .const import (
+    DOMAIN,
+    MODEM_GATEWAY,
+    CONF_REMOVE_INCOMING_SMS,
+    EVT_SMS_RECEIVED
+)
 
 from homeassistant.helpers.entity import Entity
 
@@ -15,15 +20,9 @@ SENSOR_ID = 'mm_modem.incoming_sms'
 SENSOR_NAME = 'GSM Modem SMS'
 
 
-# def setup_platform(hass, config, add_entities, discovery_info=None):
-#     """Set up the sensor platform."""
-#     _LOGGER.warn(config.data)
-#     add_entities([GsmModemSmsSensor(hass)])
-
-
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensors."""
-    _LOGGER.info(config_entry.data)
+    _LOGGER.debug(config_entry.data)
     async_add_entities([GsmModemSmsSensor(hass, config_entry)])
 
 
@@ -41,6 +40,10 @@ class GsmModemSmsSensor(Entity):
         else:
             self._remove_inc_sms = False
         self._processed_messages = set()
+        hass.bus.async_listen(EVT_SMS_RECEIVED,
+                              self._handle_sms_received)
+        _LOGGER.debug('Sms sensor up')
+        self.update()
 
     def get_gateway(self):
         """Returns the modem gateway instance from hass scope"""
@@ -69,9 +72,17 @@ class GsmModemSmsSensor(Entity):
         """
         return {}
 
+    @property
+    def should_poll(self):
+        """No polling needed."""
+        return False
+
+    async def _handle_sms_received(self, call):
+        self.update()
+        self.async_write_ha_state()
+
     def update(self):
         """Fetch new state data for the sensor.
-
         This is the only method that should fetch new data for Home Assistant.
         """
         gateway = self.get_gateway()
@@ -81,19 +92,18 @@ class GsmModemSmsSensor(Entity):
         else:
             self._messages = messages
             self._state = len(self._messages)
-            _LOGGER.info('CONF_REMOVE_INCOMING_SMS:' +
-                         str(self._remove_inc_sms))
+            _LOGGER.debug('CONF_REMOVE_INCOMING_SMS:' +
+                          str(self._remove_inc_sms))
             for message in self._messages:
                 if message.path not in self._processed_messages:
-                    _LOGGER.info(message.path)
+                    _LOGGER.debug(message.path)
                     self._processed_messages.update({message.path})
-                    _LOGGER.info(self._processed_messages)
-                    self._hass.services.call(logbook.DOMAIN, 'log', {
-                                            logbook.ATTR_NAME: SENSOR_NAME,
-                                            logbook.ATTR_MESSAGE: message.text,
-                                            logbook.ATTR_DOMAIN: DOMAIN,
-                                            logbook.ATTR_ENTITY_ID: SENSOR_ID
-                                            }, True)
+                    logbook.async_log_entry(
+                        self._hass,
+                        SENSOR_NAME,
+                        message.text,
+                        DOMAIN,
+                        SENSOR_ID)
                     self._hass.bus.async_fire(DOMAIN + '_incoming_sms',
                                               {'path': message.path,
                                                'number': message.number,

@@ -44,3 +44,5 @@ ResultInactive=yes
 https://docs.ubuntu.com/core/en/stacks/network/network-manager/docs/configure-cellular-connections
 
 ///https://www.ricmedia.com/set-permanent-dns-nameservers-ubuntu-debian-resolv-conf/
+
+https://lazka.github.io/pgi-docs/ModemManager-1.0/classes/Sms.html#ModemManager.Sms

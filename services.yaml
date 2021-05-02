@@ -8,6 +8,13 @@ send_sms:
       description: message text
       example: Hello from HASS
 
+delete_sms:
+  description: Delete sms
+  fields:
+    sms_path:
+      description: Sms path
+      example: /org/freedesktop/ModemManager1/SMS/41
+
 dial:
   description: Dials the voice number
   fields:
