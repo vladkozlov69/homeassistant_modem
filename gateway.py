@@ -90,11 +90,40 @@ class Gateway:
         threading.Thread(target=self.glib_loop_function,
                          args=(main_loop,)).start()
 
+    def get_call_state(self, call):
+        return ModemManager.CallState.get_string(call.get_state())
+
     def on_call_started(self, source_object, res, *user_data):
         """Callback method called when GSM call initiated"""
-        for x in range(1, 20):  # TODO: make this configurable
-            print(source_object.get_state(), user_data[0][1].get_state())
+        voice = user_data[0][1]
+        threading.Thread(target=self.call_close_function,
+                         args=(source_object,voice,)).start()
+
+    def call_close_function(self, call, voice):
+        call_path = call.get_path()
+        for x in range(1, 10):  # TODO: make this configurable
+            _LOG.info('call in progress:' + call_path + ' - ' + self.get_call_state(call))
+            if ModemManager.CallState.RINGING_OUT == call.get_state():
+                break
             time.sleep(1)
+        voice.hangup_all_sync(None)
+        _LOG.info('Call hangup - ' + call_path)
+        if voice.delete_call_sync(call_path, None):
+            _LOG.info('Call deleted - ' + call_path)
+        else:
+            _LOG.info('Call not deleted - ' + call_path)
+        _LOG.info('Calls before cleanup >>')
+        for callvar in voice.list_calls_sync():
+            if ModemManager.CallState.TERMINATED == callvar.get_state():
+                _LOG.info('cleanup:' + callvar.get_path() + ' - ' + self.get_call_state(callvar))
+                if voice.delete_call_sync(callvar.get_path(), None):
+                    _LOG.info('Call deleted - ' + callvar.get_path())
+                else:
+                    _LOG.info('Call not deleted - ' + callvar.get_path())
+        _LOG.info('Calls after cleanup >>')
+        for callvar in voice.list_calls_sync():
+            _LOG.info('calls:' + callvar.get_path() + ' - ' + self.get_call_state(callvar))
+        _LOG.info('Calls after cleanup <<')
 
     def on_name_owner(self, manager, prop):
         """Name owner updates"""
@@ -210,18 +239,9 @@ class Gateway:
         try:
             call = voice.create_call_sync(call_properties, None)
             call.start(cancellable=None, callback=self.on_call_started,
-                       user_data=(None, call_properties))
+                       user_data=(None, voice))
         except Exception as e:
             _LOG.error(e)
-        finally:
-            print('cleanup current call:', call.get_path())
-            print(call.get_state())
-            voice.delete_call_sync(call.get_path(), None)
-            for callvar in voice.list_calls_sync():
-                print('calls:', callvar.get_path())
-                if ModemManager.CallState.TERMINATED == callvar.get_state():
-                    print(callvar.get_state())
-                    voice.delete_call_sync(callvar.get_path(), None)
 
     def get_modem_state(self):
         """Get the current state of the modem."""
