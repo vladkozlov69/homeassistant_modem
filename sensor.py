@@ -9,7 +9,7 @@ from .const import (
     MODEM_GATEWAY,
     CONF_REMOVE_INCOMING_SMS,
     EVT_SMS_RECEIVED,
-    SENSOR_LASTUPDATE
+    SENSOR_LASTUPD
 )
 
 from homeassistant.helpers.entity import Entity
@@ -36,7 +36,7 @@ class GsmModemSmsSensor(Entity):
     def __init__(self, hass, conf_entry):
         """Initialize the sensor."""
         self._state = None
-        self._last_update = datetime.now()
+        self._lastupdate = datetime.now()
         self._hass = hass
         self._messages = []
         if CONF_REMOVE_INCOMING_SMS in conf_entry.data:
@@ -74,8 +74,7 @@ class GsmModemSmsSensor(Entity):
         Implemented by platform classes. Convention for attribute names
         is lowercase snake_case.
         """
-        return {SENSOR_LASTUPDATE: datetime.strptime(self._last_update,
-                                                     '%Y-%m-%dT%H:%M:%S')}
+        return {SENSOR_LASTUPD: self._lastupdate.strftime('%Y-%m-%dT%H:%M:%S')}
 
     @property
     def should_poll(self):
@@ -92,7 +91,7 @@ class GsmModemSmsSensor(Entity):
         """
         gateway = self.get_gateway()
         messages = gateway.get_sms_messages()
-        self._last_update = datetime.now()
+        self._lastupdate = datetime.now()
         if messages is None:
             self._state = 'Unknown'
         else:
