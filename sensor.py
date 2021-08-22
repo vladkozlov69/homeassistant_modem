@@ -2,11 +2,14 @@
 
 import logging
 
+from datetime import datetime
+
 from .const import (
     DOMAIN,
     MODEM_GATEWAY,
     CONF_REMOVE_INCOMING_SMS,
-    EVT_SMS_RECEIVED
+    EVT_SMS_RECEIVED,
+    SENSOR_LASTUPDATE
 )
 
 from homeassistant.helpers.entity import Entity
@@ -33,6 +36,7 @@ class GsmModemSmsSensor(Entity):
     def __init__(self, hass, conf_entry):
         """Initialize the sensor."""
         self._state = None
+        self._last_update = datetime.now()
         self._hass = hass
         self._messages = []
         if CONF_REMOVE_INCOMING_SMS in conf_entry.data:
@@ -70,12 +74,13 @@ class GsmModemSmsSensor(Entity):
         Implemented by platform classes. Convention for attribute names
         is lowercase snake_case.
         """
-        return {}
+        return {SENSOR_LASTUPDATE: datetime.strptime(self._last_update,
+                                                     '%Y-%m-%dT%H:%M:%S')}
 
     @property
     def should_poll(self):
         """No polling needed."""
-        return False
+        return True
 
     async def _handle_sms_received(self, call):
         self.update()
@@ -87,13 +92,15 @@ class GsmModemSmsSensor(Entity):
         """
         gateway = self.get_gateway()
         messages = gateway.get_sms_messages()
+        self._last_update = datetime.now()
         if messages is None:
             self._state = 'Unknown'
         else:
             self._messages = messages
             self._state = len(self._messages)
-            _LOGGER.debug('CONF_REMOVE_INCOMING_SMS:' +
+            _LOGGER.debug('[update] CONF_REMOVE_INCOMING_SMS:' +
                           str(self._remove_inc_sms))
+            _LOGGER.debug('[update] Messages count:', str(len(self._messages)))
             for message in self._messages:
                 if message.path not in self._processed_messages:
                     _LOGGER.debug(message.path)

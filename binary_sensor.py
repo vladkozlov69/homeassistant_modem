@@ -2,13 +2,16 @@
 
 import logging
 
+from datetime import datetime
+
 from .const import (
     DOMAIN,
     MODEM_GATEWAY,
     EVT_MODEM_CONNECTED,
     EVT_MODEM_DISCONNECTED,
     EVT_LTE_CONNECTED,
-    EVT_LTE_DISCONNECTED
+    EVT_LTE_DISCONNECTED,
+    SENSOR_LASTUPDATE
 )
 
 from homeassistant.components.binary_sensor import (
@@ -101,7 +104,9 @@ class GsmModemSensor(BinarySensorEntity):
         """
         return {SENSOR_STATUS: self._modem_status,
                 SENSOR_OPERATOR: self._cell_operator,
-                SENSOR_SIGNAL: self._signal_strength}
+                SENSOR_SIGNAL: self._signal_strength,
+                SENSOR_LASTUPDATE: datetime.strptime(datetime.now(),
+                                                     '%Y-%m-%dT%H:%M:%S')}
 
     def update(self):
         """Fetch new state data for the sensor.
