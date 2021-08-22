@@ -99,7 +99,7 @@ class GsmModemSmsSensor(Entity):
             self._state = len(self._messages)
             _LOGGER.debug('[update] CONF_REMOVE_INCOMING_SMS:' +
                           str(self._remove_inc_sms))
-            _LOGGER.debug('[update] Messages count:', str(len(self._messages)))
+            _LOGGER.debug('[update] Messages count:' + str(len(self._messages)))
             for message in self._messages:
                 if message.path not in self._processed_messages:
                     _LOGGER.debug(message.path)
