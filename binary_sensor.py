@@ -97,7 +97,7 @@ class GsmModemSensor(BinarySensorEntity):
         return GSM_SENSOR_ID
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device specific state attributes.
         Implemented by platform classes. Convention for attribute names
         is lowercase snake_case.
@@ -179,7 +179,7 @@ class LteConnectionSensor(BinarySensorEntity):
         return LTE_SENSOR_ID
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return device specific state attributes.
         Implemented by platform classes. Convention for attribute names
         is lowercase snake_case.
