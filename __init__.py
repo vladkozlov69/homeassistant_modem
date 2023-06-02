@@ -1,5 +1,10 @@
 """The sms component."""
 
+import sys, signal, gi
+
+gi.require_version('ModemManager', '1.0')
+from gi.repository import GLib, GObject, Gio, ModemManager
+
 import logging
 
 import voluptuous as vol
@@ -71,12 +76,29 @@ async def async_setup_entry(hass, config_entry):
     """Set up the LTE Modem component."""
 
     @callback
-    async def handle_send_sms(call):
+    def handle_send_sms(call):
         """Handle the sms sending service call."""
         number = call.data.get(ATTR_PHONE_NUMBER)
         message = call.data.get(ATTR_MESSAGE)
-        sms_service = get_sms_service(hass)
-        await sms_service.send_message(number, message)
+        # Prepare SMS properties
+        sms_properties = ModemManager.SmsProperties.new ()
+        sms_properties.set_number(number)
+        sms_properties.set_text(message)
+
+        # Connection to ModemManager
+        connection = Gio.bus_get_sync (Gio.BusType.SYSTEM, None)
+        manager = ModemManager.Manager.new_sync (connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
+        if manager.get_name_owner() is None:
+            print('ModemManager not found in bus')
+
+        # Iterate modems and send SMS with each
+        for obj in manager.get_objects():
+            messaging = obj.get_modem_messaging()
+            sms = messaging.create_sync(sms_properties)
+            sms.send_sync()
+            print('%s: sms sent' % messaging.get_object_path()) 
+#        sms_service = get_sms_service(hass)
+#        sms_service.send_message(number, message)
 
     @callback
     async def handle_delete_sms(call):

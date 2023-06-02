@@ -215,14 +215,30 @@ class Gateway:
         sms_properties.set_number(number)
         sms_properties.set_text(message)
 
-        messaging = self._messaging
-        if messaging is not None:
+        # Connection to ModemManager
+        connection = Gio.bus_get_sync (Gio.BusType.SYSTEM, None)
+        manager = ModemManager.Manager.new_sync (connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
+        if manager.get_name_owner() is None:
+            _LOG.error('ModemManager not found in bus')
+            raise GSMGatewayExcepion('ModemManager not found in bus')
+
+        # Iterate modems and send SMS with each
+        for obj in manager.get_objects():
+            messaging = obj.get_modem_messaging()
             sms = messaging.create_sync(sms_properties)
+            print('%s: sms sending' % messaging.get_object_path())
             sms.send_sync()
-            _LOG.info('%s: sms sent', messaging.get_object_path())
-        else:
-            _LOG.error(NO_MODEM_FOUND)
-            raise GSMGatewayException(NO_MODEM_FOUND)
+            print('%s: sms sent' % messaging.get_object_path()) 
+        #messaging = self._messaging
+        #print(messaging)
+        #if messaging is not None:
+        #    sms = messaging.create_sync(sms_properties)
+        #    print(sms)
+        #    sms.send_sync()
+        #    _LOG.info('%s: sms sent', messaging.get_object_path())
+        #else:
+        #    _LOG.error(NO_MODEM_FOUND)
+        #    raise GSMGatewayException(NO_MODEM_FOUND)
 
     def dial_voice(self, number):
         """Initiale voice call"""
