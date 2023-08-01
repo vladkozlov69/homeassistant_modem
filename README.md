@@ -15,7 +15,7 @@ CONFIGURE GSM MODEM
 
 sudo apt install avahi-daemon mosquitto htop mc build-essential cmake modemmanager
 sudo apt install gir1.2-nm-1.0 libmm-glib-dev libglib2.0-dev pkg-config libgirepository1.0-dev libcairo2-dev libqmi-utils udhcpc
-sudo apt install build-essential libdbus-1-dev libdbus-glib-1-dev libgirepository1.0-dev
+sudo apt install build-essential libdbus-1-dev libdbus-glib-1-dev libgirepository1.0-dev libcairo2-dev
 
 (in venv) 
   pip install python-networkmanager
