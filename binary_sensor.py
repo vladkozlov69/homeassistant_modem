@@ -49,13 +49,13 @@ class GsmModemSensor(BinarySensorEntity):
     _signal_strength = 0
     _modem_status = 'none'
     _cell_operator = 'none'
-    _hass = None
+    hass = None
     _prev_status = False
 
     def __init__(self, hass):
         """Initialize the sensor."""
         self._state = None
-        self._hass = hass
+        self.hass = hass
         hass.bus.async_listen(EVT_MODEM_DISCONNECTED,
                               self._handle_modem_disconnected)
 
@@ -64,16 +64,18 @@ class GsmModemSensor(BinarySensorEntity):
         self.update()
 
     async def _handle_modem_disconnected(self, call):
+        _LOGGER.info('_handle_modem_disconnected')
         self.update()
         self.async_write_ha_state()
 
     async def _handle_modem_connected(self, call):
+        _LOGGER.info('_handle_modem_connected')
         self.update()
         self.async_write_ha_state()
 
     def get_gateway(self):
         """Returns the modem gateway instance from hass scope"""
-        return self._hass.data[DOMAIN][MODEM_GATEWAY]
+        return self.hass.data[DOMAIN][MODEM_GATEWAY]
 
     @property
     def name(self):
@@ -132,14 +134,15 @@ class GsmModemSensor(BinarySensorEntity):
 
 class LteConnectionSensor(BinarySensorEntity):
     """Representation of a Sensor."""
-    _modem_status = None
-    _hass = None
+    _lte_status = None
+    _modem_status = 'none'
+    hass = None
     _prev_status = False
 
     def __init__(self, hass):
         """Initialize the sensor."""
         self._state = None
-        self._hass = hass
+        self.hass = hass
         hass.bus.async_listen(EVT_LTE_DISCONNECTED,
                               self._handle_lte_disconnected)
 
@@ -156,7 +159,7 @@ class LteConnectionSensor(BinarySensorEntity):
 
     def get_gateway(self):
         """Returns the modem gateway instance from hass scope"""
-        return self._hass.data[DOMAIN][MODEM_GATEWAY]
+        return self.hass.data[DOMAIN][MODEM_GATEWAY]
 
     @property
     def name(self):
@@ -166,7 +169,7 @@ class LteConnectionSensor(BinarySensorEntity):
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        return [CONNECTED_STATUS].__contains__(self._modem_status)
+        return self._lte_status or [CONNECTED_STATUS].__contains__(self._modem_status)
 
     @property
     def device_class(self):
@@ -191,6 +194,7 @@ class LteConnectionSensor(BinarySensorEntity):
         This is the only method that should fetch new data for Home Assistant.
         """
         gateway = self.get_gateway()
+        self._lte_status = gateway.get_lte_state()
         modem_info = gateway.get_modem_state()
         if modem_info is not None:
             self._modem_status = modem_info['status']

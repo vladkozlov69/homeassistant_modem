@@ -272,6 +272,20 @@ class Gateway:
             'operator': modem.get_sim_sync().get_operator_name()
         }
 
+    def _active_connection_added_cb(self, client, connection):
+        _LOG.debug("NM connection added: %s", connection.get_uuid())
+
+    def _active_connection_removed_cb(self, client, connection):
+        _LOG.debug("NM connection removed: %s", connection.get_uuid())
+
+    def _activate_connection_async_cb(self, source_object, res):
+        _LOG.debug("activate_connection_async_cb %s %s" % (source_object, res))
+        self._hass.bus.async_fire(EVT_LTE_CONNECTED, {})
+
+    def _deactivate_connection_async_cb(self, source_object, res):
+        _LOG.debug("deactivate_connection_async_cb %s %s" % (source_object, res))
+        self._hass.bus.async_fire(EVT_LTE_DISCONNECTED, {})
+
     def lte_up(self):
         """LTE Up."""
         conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
@@ -280,14 +294,13 @@ class Gateway:
 
         # Find the connection
         client = NM.Client.new(None)
+        client.connect("active-connection-added", self._active_connection_added_cb)
         connections = client.get_connections()
         for c in connections:
             _LOG.debug("=== %s : %s ===" % (c.get_id(), c.get_path()))
             if c.get_id() == conn_name:
-                _LOG.debug("Activating...")
-                client.activate_connection_async(c, None, None, None, None)
-                # FIXME add callback listener 
-                self._hass.bus.async_fire(EVT_LTE_CONNECTED, {})
+                _LOG.info("Activating  %s %s" % (c.get_id(), c.get_path()))
+                client.activate_connection_async(c, None, None, None, self._activate_connection_async_cb)
 
     def lte_down(self):
         """LTE Down."""
@@ -297,14 +310,13 @@ class Gateway:
 
         # Find the connection
         client = NM.Client.new(None)
+        client.connect("active-connection-removed", self._active_connection_removed_cb)
         connections = client.get_active_connections()
         for c in connections:
             _LOG.debug("=== %s : %s ===" % (c.get_id(), c.get_path()))
             if c.get_id() == conn_name:
-                _LOG.debug("Deactivating...")
-                client.deactivate_connection(c, None)
-                # FIXME use async version and add callback listener
-                self._hass.bus.async_fire(EVT_LTE_DISCONNECTED, {})
+                _LOG.info("Deactivating %s %s" % (c.get_id(), c.get_path()))
+                client.deactivate_connection_async(c, None, self._deactivate_connection_async_cb)
 
     def get_lte_state(self):
         conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
