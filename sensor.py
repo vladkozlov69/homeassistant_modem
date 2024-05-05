@@ -114,7 +114,7 @@ class GsmModemSmsSensor(Entity):
                         message.text,
                         DOMAIN,
                         SENSOR_ID)
-                    self._hass.bus.async_fire(DOMAIN + '_incoming_sms',
+                    self._hass.bus.async_fire_internal(DOMAIN + '_incoming_sms', #FIXME
                                               {'path': message.path,
                                                'number': message.number,
                                                'timestamp': message.timestamp,

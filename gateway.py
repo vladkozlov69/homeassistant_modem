@@ -146,7 +146,7 @@ class Gateway:
                 self._messaging_notify_id = self._messaging.connect(
                     'notify::messages',
                     self.on_messaging_notify)
-                self._hass.bus.async_fire(EVT_MODEM_CONNECTED, {})
+                self._hass.bus.fire(EVT_MODEM_CONNECTED, {})
 
     def set_available(self):
         """ModemManager is now available"""
@@ -192,12 +192,12 @@ class Gateway:
 
         self._modem_object = None
         self._messaging = None
-        self._hass.bus.async_fire(EVT_MODEM_DISCONNECTED, {})
+        self._hass.bus.fire(EVT_MODEM_DISCONNECTED, {})
 
     def on_messaging_notify(self, manager, obj):
         """Messaging callback"""
         if (obj.name == 'messages'):
-            self._hass.bus.async_fire(EVT_SMS_RECEIVED, {})
+            self._hass.bus.fire(EVT_SMS_RECEIVED, {})
         else:
             _LOG.warn('Unknown messaging notification: [%s]' % obj)
 
@@ -317,7 +317,7 @@ class Gateway:
 
         # And connect
         NetworkManager.NetworkManager.ActivateConnection(conn, dev, "/")
-        self._hass.bus.async_fire(EVT_LTE_CONNECTED, {})
+        self._hass.bus.fire(EVT_LTE_CONNECTED, {})
 
     def lte_down(self):
         """LTE Down."""
@@ -333,7 +333,7 @@ class Gateway:
             active_conn = devices[0].ActiveConnection
             print(active_conn.Id)
             NetworkManager.NetworkManager.DeactivateConnection(active_conn)
-            self._hass.bus.async_fire(EVT_LTE_DISCONNECTED, {})
+            self._hass.bus.fire(EVT_LTE_DISCONNECTED, {})
 
         else:
             _LOG.warning('No active LTE connection found')
@@ -375,12 +375,12 @@ class Gateway:
         else:
             return None
 
-    def delete_sms_message(self, message_path):
+    async def delete_sms_message(self, message_path):
         if self._messaging is None:
             _LOG.error(NO_MODEM_FOUND)
             raise GSMGatewayException(NO_MODEM_FOUND)
         else:
-            self._messaging.call_delete_sync(message_path)
+            self._messaging.call_delete(message_path)
             _LOG.info('Deleted SMS ' + message_path)
 
 

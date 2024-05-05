@@ -70,4 +70,4 @@ class SMSNotificationService:
 
     async def delete_message(self, path):
         """Send SMS message."""
-        self.gateway.delete_sms_message(path)
+        await self.gateway.delete_sms_message(path)
