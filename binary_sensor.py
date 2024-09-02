@@ -15,8 +15,8 @@ from .const import (
 )
 
 from homeassistant.components.binary_sensor import (
-    DEVICE_CLASS_CONNECTIVITY,
     BinarySensorEntity,
+    BinarySensorDeviceClass,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,7 +91,7 @@ class GsmModemSensor(BinarySensorEntity):
     @property
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
-        return DEVICE_CLASS_CONNECTIVITY
+        return BinarySensorDeviceClass.CONNECTIVITY
 
     @property
     def unique_id(self):
@@ -174,7 +174,7 @@ class LteConnectionSensor(BinarySensorEntity):
     @property
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
-        return DEVICE_CLASS_CONNECTIVITY
+        return BinarySensorDeviceClass.CONNECTIVITY
 
     @property
     def unique_id(self):

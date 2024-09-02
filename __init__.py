@@ -127,14 +127,14 @@ async def async_setup_entry(hass, config_entry):
         await lte_service.lte_down()
 
     hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(config_entry,
-                                                      "binary_sensor")
+        hass.config_entries.async_forward_entry_setups(config_entry,
+                                                      ["binary_sensor", "sensor"])
     )
 
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(config_entry,
-                                                      "sensor")
-    )
+    #hass.async_create_task(
+    #    hass.config_entries.async_forward_entry_setups(config_entry,
+    #                                                  "sensor")
+    #)
 
     hass.data.setdefault(DOMAIN, {})
 
