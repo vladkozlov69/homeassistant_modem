@@ -21,7 +21,8 @@ from .const import (
     ATTR_PHONE_NUMBER,
     ATTR_MESSAGE,
     ATTR_CONNECTION_NAME,
-    ATTR_SMS_PATH
+    ATTR_SMS_PATH,
+    EVT_SMS_FORGET
 )
 
 from .gateway import create_modem_gateway
@@ -129,7 +130,9 @@ async def async_setup_entry(hass, config_entry):
     @callback
     async def handle_sms_forget(call):
         """Handle the sms forgetting service call."""
-        EVT_SMS_FORGET
+        _LOGGER.debug('[update] Firing event: ' + DOMAIN + EVT_SMS_FORGET)
+        hass.bus.async_fire_internal(DOMAIN + EVT_SMS_FORGET)
+
 
     hass.async_create_task(
         hass.config_entries.async_forward_entry_setups(config_entry,
