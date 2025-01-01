@@ -89,7 +89,7 @@ class GsmModemSmsSensor(Entity):
         self.async_write_ha_state()
 
     async def _handle_sms_forget(self, call):
-        self._processed_messages = []
+        self._processed_messages = set()
         _LOGGER.debug('[_handle_sms_forget] Cleared processed_messages list')
         await self._handle_sms_received(call)
 
@@ -115,7 +115,7 @@ class GsmModemSmsSensor(Entity):
             for message in self._messages:
                 if message.path not in self._processed_messages:
                     _LOGGER.debug(message.path)
-                    self._processed_messages.update({message.path})
+                    self._processed_messages.update(message.path)
                     logbook.async_log_entry(
                         self._hass,
                         SENSOR_NAME,
