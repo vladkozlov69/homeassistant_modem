@@ -2,7 +2,6 @@
 import logging
 
 import gi
-import NetworkManager
 import time
 import threading
 
@@ -24,10 +23,11 @@ gi.require_version('ModemManager', '1.0')
 gi.require_version("NM", "1.0")
 
 from gi.repository import GLib, Gio, ModemManager
+from gi.repository import NM
 
-from dbus.mainloop.glib import DBusGMainLoop
+#from dbus.mainloop.glib import DBusGMainLoop
 
-DBusGMainLoop(set_as_default=True)
+#DBusGMainLoop(set_as_default=True)
 
 _LOG = logging.getLogger(__name__)
 _LOG.setLevel(logging.DEBUG)
@@ -272,92 +272,67 @@ class Gateway:
             'operator': modem.get_sim_sync().get_operator_name()
         }
 
+    def _active_connection_added_cb(self, client, connection):
+        _LOG.debug("NM connection added: %s", connection.get_uuid())
+
+    def _active_connection_removed_cb(self, client, connection):
+        _LOG.debug("NM connection removed: %s", connection.get_uuid())
+
+    def _activate_connection_async_cb(self, source_object, res):
+        _LOG.debug("activate_connection_async_cb %s %s" % (source_object, res))
+        self._hass.bus.async_fire(EVT_LTE_CONNECTED, {})
+
+    def _deactivate_connection_async_cb(self, source_object, res):
+        _LOG.debug("deactivate_connection_async_cb %s %s" % (source_object, res))
+        self._hass.bus.async_fire(EVT_LTE_DISCONNECTED, {})
+
     def lte_up(self):
         """LTE Up."""
         conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
         if _LOG.isEnabledFor(logging.DEBUG):
-            _LOG.debug("connection name: %s", conn_name)
+            _LOG.debug("Configured connection name: %s", conn_name)
 
         # Find the connection
-        connections = NetworkManager.Settings.ListConnections()
-        connections = {x.GetSettings()['connection']['id']: x
-                       for x in connections}
-        conn = connections.get(conn_name)
-
-        if conn is None:
-            _LOG.warning("No connection name %s found", conn_name)
-            raise GSMGatewayException("No connection %s found" % conn_name)
-
-        # Find a suitable device
-        ctype = conn.GetSettings()['connection']['type']
-        if ctype == 'vpn':
-            for dev in NetworkManager.NetworkManager.GetDevices():
-                if (dev.State == NetworkManager.NM_DEVICE_STATE_ACTIVATED
-                   and dev.Managed):
-                    break
-            else:
-                _LOG.error("No active, managed device %s found", ctype)
-                raise GSMGatewayException("No active managed device %s found"
-                                          % ctype)
-        else:
-            dtype = {
-                '802-11-wireless': NetworkManager.NM_DEVICE_TYPE_WIFI,
-                '802-3-ethernet': NetworkManager.NM_DEVICE_TYPE_ETHERNET,
-                'gsm': NetworkManager.NM_DEVICE_TYPE_MODEM,
-            }.get(ctype, ctype)
-            devices = NetworkManager.NetworkManager.GetDevices()
-
-            for dev in devices:
-                if (dev.DeviceType == dtype and
-                   dev.State == NetworkManager.NM_DEVICE_STATE_DISCONNECTED):
-                    break
-            else:
-                _LOG.error('No suitable and available %s device found', ctype)
-                return
-
-        # And connect
-        NetworkManager.NetworkManager.ActivateConnection(conn, dev, "/")
-        self._hass.bus.fire(EVT_LTE_CONNECTED, {})
+        client = NM.Client.new(None)
+        client.connect("active-connection-added", self._active_connection_added_cb)
+        connections = client.get_connections()
+        for c in connections:
+            _LOG.debug("=== %s : %s ===" % (c.get_id(), c.get_path()))
+            if c.get_id() == conn_name:
+                _LOG.info("Activating  %s %s" % (c.get_id(), c.get_path()))
+                client.activate_connection_async(c, None, None, None, self._activate_connection_async_cb)
 
     def lte_down(self):
         """LTE Down."""
-        # list of devices with active connection
-        devices = self.get_lte_devices()
+        conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
+        if _LOG.isEnabledFor(logging.DEBUG):
+            _LOG.debug("Configured connection name: %s", conn_name)
 
-        # print the list
-        for index, device in enumerate(devices):
-            _LOG.info("%s) %s Active:%s",
-                      index, device.Interface, device.ActiveConnection.Id)
-
-        if devices:
-            active_conn = devices[0].ActiveConnection
-            print(active_conn.Id)
-            NetworkManager.NetworkManager.DeactivateConnection(active_conn)
-            self._hass.bus.fire(EVT_LTE_DISCONNECTED, {})
-
-        else:
-            _LOG.warning('No active LTE connection found')
+        # Find the connection
+        client = NM.Client.new(None)
+        client.connect("active-connection-removed", self._active_connection_removed_cb)
+        connections = client.get_active_connections()
+        for c in connections:
+            _LOG.debug("=== %s : %s ===" % (c.get_id(), c.get_path()))
+            if c.get_id() == conn_name:
+                _LOG.info("Deactivating %s %s" % (c.get_id(), c.get_path()))
+                client.deactivate_connection_async(c, None, self._deactivate_connection_async_cb)
 
     def get_lte_state(self):
-        devices = self.get_lte_devices()
+        conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
+        if _LOG.isEnabledFor(logging.DEBUG):
+            _LOG.debug("Configured connection name: %s", conn_name)
 
-        # print the list
-        for index, device in enumerate(devices):
-            _LOG.info("%s) %s Active:%s",
-                      index, device.Interface, device.ActiveConnection.Id)
+        # Find the connection
+        client = NM.Client.new(None)
+        connections = client.get_active_connections()
+        for c in connections:
+            _LOG.debug("=== %s : %s ===" % (c.get_id(), c.get_path()))
+            if c.get_id() == conn_name:
+                return True
 
-        if devices:
-            return True
-        else:
-            return False
+        return False
 
-    def get_lte_devices(self):
-        """Returns list of LTE devices"""
-        all_devices = NetworkManager.NetworkManager.GetAllDevices()
-        return list(filter(lambda _dev: _dev.ActiveConnection is not None
-                           and _dev.ActiveConnection.Id ==
-                           self._config_entry.data[ATTR_CONNECTION_NAME],
-                           all_devices))
 
     def get_sms_messages(self):
         if self._messaging is not None:
