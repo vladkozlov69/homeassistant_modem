@@ -129,8 +129,8 @@ class GsmModemSmsSensor(Entity):
                                                'number': message.number,
                                                'timestamp': message.timestamp,
                                                'text': message.text})
-                    if (self._remove_inc_sms):
+                    if self._remove_inc_sms:
                         gateway.delete_sms_message(message.path)
 
                 else:
-                    _LOGGER.debug('[update] Skipping as already processed: ' + message.path);
+                    _LOGGER.debug('[update] Skipping as already processed: ' + message.path)

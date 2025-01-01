@@ -166,7 +166,7 @@ class Gateway:
     def set_unavailable(self):
         """ModemManager is now unavailable"""
         if self._available or self._initializing:
-            _LOG.warn('ModemManager service not available in bus')
+            _LOG.warning('ModemManager service not available in bus')
             self._modem_object = None
 
         if self._object_added_id:
@@ -184,7 +184,7 @@ class Gateway:
 
     def on_object_removed(self, manager, obj):
         """Modem disconnected"""
-        _LOG.warn('modem unmanaged by ModemManager: %s'
+        _LOG.warning('modem unmanaged by ModemManager: %s'
                   % obj.get_object_path())
 
         self._messaging.disconnect(self._messaging_notify_id)
@@ -196,10 +196,10 @@ class Gateway:
 
     def on_messaging_notify(self, manager, obj):
         """Messaging callback"""
-        if (obj.name == 'messages'):
+        if obj.name == 'messages':
             self._hass.bus.fire(EVT_SMS_RECEIVED, {})
         else:
-            _LOG.warn('Unknown messaging notification: [%s]' % obj)
+            _LOG.warning('Unknown messaging notification: [%s]' % obj)
 
     def get_mm_modem(self, show_warning=True):
         """Gets ModemManager modem"""

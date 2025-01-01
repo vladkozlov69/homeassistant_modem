@@ -2,3 +2,6 @@ gobject==0.1.0
 PyGObject==3.50.0
 python-networkmanager==2.2
 
+
+voluptuous~=0.15.2
+homeassistant~=2024.12.5
