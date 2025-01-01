@@ -220,7 +220,7 @@ class Gateway:
         manager = ModemManager.Manager.new_sync (connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
         if manager.get_name_owner() is None:
             _LOG.error('ModemManager not found in bus')
-            raise GSMGatewayExcepion('ModemManager not found in bus')
+            raise GSMGatewayException('ModemManager not found in bus')
 
         # Iterate modems and send SMS with each
         for obj in manager.get_objects():
