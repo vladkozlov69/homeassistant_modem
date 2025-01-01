@@ -115,8 +115,8 @@ class GsmModemSmsSensor(Entity):
             for message in self._messages:
                 if message.path not in self._processed_messages:
                     _LOGGER.debug(message.path)
-                    self._processed_messages.update(message.path)
-                    logbook.async_log_entry(
+                    self._processed_messages.update({message.path})
+                    logbook.log_entry( # FIXME should be sync here?
                         self._hass,
                         SENSOR_NAME,
                         message.text,
