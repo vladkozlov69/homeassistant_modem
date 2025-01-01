@@ -9,6 +9,7 @@ from .const import (
     MODEM_GATEWAY,
     CONF_REMOVE_INCOMING_SMS,
     EVT_SMS_RECEIVED,
+    EVT_SMS_FORGET,
     SENSOR_LASTUPD
 )
 
@@ -46,6 +47,8 @@ class GsmModemSmsSensor(Entity):
         self._processed_messages = set()
         hass.bus.async_listen(EVT_SMS_RECEIVED,
                               self._handle_sms_received)
+        hass.bus.async_listen(EVT_SMS_FORGET,
+                              self._handle_sms_forget)
         _LOGGER.debug('Sms sensor up')
         self.update()
 
@@ -85,6 +88,11 @@ class GsmModemSmsSensor(Entity):
         self.update()
         self.async_write_ha_state()
 
+    async def _handle_sms_forget(self, call):
+        self._processed_messages = []
+        _LOGGER.debug('[_handle_sms_forget] Cleared processed_messages list')
+        await self._handle_sms_received(call)
+
     def update(self):
         """Fetch new state data for the sensor.
         This is the only method that should fetch new data for Home Assistant.
@@ -114,6 +122,8 @@ class GsmModemSmsSensor(Entity):
                         message.text,
                         DOMAIN,
                         SENSOR_ID)
+
+                    _LOGGER.debug('[update] Firing event: ' + DOMAIN + '_incoming_sms for ' + message.path)
                     self._hass.bus.async_fire_internal(DOMAIN + '_incoming_sms', #FIXME
                                               {'path': message.path,
                                                'number': message.number,
@@ -121,3 +131,6 @@ class GsmModemSmsSensor(Entity):
                                                'text': message.text})
                     if (self._remove_inc_sms):
                         gateway.delete_sms_message(message.path)
+
+                else:
+                    _LOGGER.debug('[update] Skipping as already processed: ' + message.path);

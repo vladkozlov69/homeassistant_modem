@@ -27,3 +27,6 @@ lte_up:
 
 lte_down:
   description: Disables active LTE connection
+
+sms_forget:
+  description: Clear known sms cache

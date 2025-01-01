@@ -16,5 +16,6 @@ EVT_MODEM_DISCONNECTED = DOMAIN + '_modem_disconnected'
 EVT_LTE_CONNECTED = DOMAIN + '_lte_connected'
 EVT_LTE_DISCONNECTED = DOMAIN + '_lte_disconnected'
 EVT_SMS_RECEIVED = DOMAIN + '_sms_received'
+EVT_SMS_FORGET = DOMAIN + '_sms_forget'
 
 SENSOR_LASTUPD = 'modem_lastupdate'

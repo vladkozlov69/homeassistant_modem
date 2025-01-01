@@ -126,6 +126,11 @@ async def async_setup_entry(hass, config_entry):
         lte_service = get_lte_service(hass)
         await lte_service.lte_down()
 
+    @callback
+    async def handle_sms_forget(call):
+        """Handle the sms forgetting service call."""
+        EVT_SMS_FORGET
+
     hass.async_create_task(
         hass.config_entries.async_forward_entry_setups(config_entry,
                                                       ["binary_sensor", "sensor"])
@@ -169,6 +174,10 @@ async def async_setup_entry(hass, config_entry):
     hass.services.async_register(DOMAIN,
                                  'lte_down',
                                  handle_lte_down)
+
+    hass.services.async_register(DOMAIN,
+                                 'sms_forget',
+                                 handle_sms_forget)
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP,
                                gateway.stop_glib_loop)
