@@ -4,7 +4,7 @@ import logging
 
 from datetime import datetime
 
-from .const import (
+from const import (
     DOMAIN,
     MODEM_GATEWAY,
     CONF_REMOVE_INCOMING_SMS,
