@@ -1,8 +1,10 @@
+
 import unittest
 from unittest.mock import Mock
 
-from gateway import Gateway
-from sensor import GsmModemSmsSensor
+
+from custom_components.mm_modem.gateway import Gateway
+from custom_components.mm_modem.sensor import GsmModemSmsSensor
 
 class GsmModemSmsSensorTest(unittest.TestCase):
     def test_name(self):
@@ -12,5 +14,5 @@ class GsmModemSmsSensorTest(unittest.TestCase):
         assert sensor.name == 'GSM Modem SMS'
 
 
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+#     unittest.main()
