@@ -146,14 +146,14 @@ async def async_setup_entry(hass, config_entry):
 
     hass.data.setdefault(DOMAIN, {})
 
-    gateway = create_modem_gateway(config_entry, hass)
+    modem_gateway = create_modem_gateway(config_entry, hass)
 
-    if not gateway:
+    if not modem_gateway:
         return False
 
-    hass.data[DOMAIN][MODEM_GATEWAY] = gateway
+    hass.data[DOMAIN][MODEM_GATEWAY] = modem_gateway
 
-    await gateway.async_added_to_hass()
+    await modem_gateway.async_added_to_hass()
 
     hass.services.async_register(DOMAIN,
                                  'send_sms',
@@ -183,6 +183,6 @@ async def async_setup_entry(hass, config_entry):
                                  handle_sms_forget)
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP,
-                               gateway.stop_glib_loop)
+                               modem_gateway.stop_glib_loop)
 
     return True
