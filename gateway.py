@@ -7,7 +7,7 @@ import threading
 
 from homeassistant.core import callback
 
-from const import (
+from .const import (
     ATTR_CONNECTION_NAME,
     EVT_MODEM_CONNECTED,
     EVT_MODEM_DISCONNECTED,
@@ -16,8 +16,8 @@ from const import (
     EVT_SMS_RECEIVED
 )
 
-from sms_message import SmsMessage
-from exceptions import GSMGatewayException
+from .sms_message import SmsMessage
+from .exceptions import GSMGatewayException
 
 gi.require_version('ModemManager', '1.0')
 gi.require_version("NM", "1.0")
