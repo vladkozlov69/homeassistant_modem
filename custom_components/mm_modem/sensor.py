@@ -58,7 +58,7 @@ class GsmModemSmsSensor(Entity):
         hass.bus.async_listen(EVT_SMS_DELETE,
                               self._handle_sms_delete)
         _LOGGER.debug('Sms sensor up')
-        self.update()
+        # uawait self.update()
 
     def get_gateway(self):
         """Returns the modem gateway instance from hass scope"""
