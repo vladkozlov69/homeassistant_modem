@@ -112,10 +112,14 @@ class GsmModemSmsSensor(Entity):
                           str(self._remove_inc_sms))
             _LOGGER.debug('[update] Messages count:' +
                           str(len(self._messages)))
+
+            duplicated_content = set()
             for message in self._messages:
-                if message.path not in self._processed_messages:
+                message_content = message.number + '|' + message.text + '|' + message.timestamp
+                if (message.path not in self._processed_messages) and (message_content not in duplicated_content):
                     _LOGGER.debug(message.path)
                     self._processed_messages.update({message.path})
+                    duplicated_content.update({message_content})
                     logbook.log_entry( # FIXME should be sync here?
                         self._hass,
                         SENSOR_NAME,

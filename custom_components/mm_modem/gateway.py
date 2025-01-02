@@ -140,7 +140,11 @@ class Gateway:
                 _LOG.error('%s ignoring failed modem' % obj.get_object_path())
                 pass
             else:
-                _LOG.info('Modem added to bus %s' % modem)
+                _LOG.info('Modem added to bus: %s (%s) [%s]: %s' %
+                      (modem.get_manufacturer(),
+                       modem.get_model(),
+                       modem.get_equipment_identifier(),
+                       obj.get_object_path()))
                 self._modem_object = obj
                 self._messaging = obj.get_modem_messaging()
                 self._messaging_notify_id = self._messaging.connect(
@@ -350,13 +354,21 @@ class Gateway:
         else:
             return None
 
+    def on_sms_deleted(self, source_object, res, *user_data):
+        """Callback method called when GSM call initiated"""
+        message_path = user_data[0][1]
+        _LOG.info('Deleted SMS ' + message_path)
+
     async def delete_sms_message(self, message_path):
         if self._messaging is None:
             _LOG.error(NO_MODEM_FOUND)
             raise GSMGatewayException(NO_MODEM_FOUND)
         else:
-            await self._messaging.call_delete(message_path)
-            _LOG.info('Deleted SMS ' + message_path)
+            self._messaging.call_delete(message_path,
+                                        cancellable=None,
+                                        callback=self.on_sms_deleted,
+                                        user_data=(None, message_path))
+            _LOG.info('Deleting SMS ' + message_path)
 
 
 def create_modem_gateway(config_entry, hass):

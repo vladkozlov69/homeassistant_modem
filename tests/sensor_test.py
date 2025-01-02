@@ -63,5 +63,19 @@ class GsmModemSmsSensorTest(unittest.TestCase):
         mock_bus.fire.assert_has_calls(calls)
         assert mock_bus.fire.call_count == 3
 
+    def test_update_new_messages_filter_duplicates(self):
+        mock_gateway = Mock(spec=Gateway)
+        mock_bus = Mock(spec=EventBus)
+        mock_gateway.get_sms_messages.return_value = [
+            SmsMessage(path='/m/p/1', number='01234', text='msg text', timestamp='dd-mm-2025'),
+            SmsMessage(path='/m/p/2', number='01234', text='msg text', timestamp='dd-mm-2025'),
+        ]
+        sensor = GsmModemSmsSensor(Mock(bus=mock_bus, data={'mm_modem': {'MM_MODEM_GATEWAY': mock_gateway}}), Mock(data={}))
+        assert sensor.state == 2
+
+        mock_bus.fire.assert_called_once_with(event_type='mm_modem_incoming_sms',
+                 event_data={'path': '/m/p/1', 'number': '01234', 'timestamp': 'dd-mm-2025', 'text': 'msg text'})
+
+        assert mock_bus.fire.call_count == 1
 if __name__ == '__main__':
     unittest.main()
