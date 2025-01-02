@@ -382,6 +382,15 @@ class Gateway:
             _LOG.info('Deleting SMS ' + message_path)
 
 
+    def delete_sms_message_sync(self, message_path):
+        if self._messaging is None:
+            _LOG.error(NO_MODEM_FOUND)
+            raise GSMGatewayException(NO_MODEM_FOUND)
+        else:
+            self._messaging.call_delete_sync(message_path)
+            _LOG.info('Deleted SMS ' + message_path)
+
+
 def create_modem_gateway(config_entry, hass):
     """Create the modem gateway."""
     gateway = Gateway(config_entry, hass)

@@ -130,15 +130,13 @@ class GsmModemSmsSensor(Entity):
 
                     _LOGGER.debug('[update] Firing event: ' + DOMAIN + '_incoming_sms for ' + message.path)
                     self._hass.bus.fire(event_type=DOMAIN + '_incoming_sms',
-                                              event_data={'path': message.path,
+                                        event_data={'path': message.path,
                                                'number': message.number,
                                                'timestamp': message.timestamp,
                                                'text': message.text})
                     if self._remove_inc_sms:
-                        gateway.delete_sms_message(message.path)
+                        gateway.delete_sms_message_sync(message.path)
 
                 else:
                     _LOGGER.debug('[update] Skipping as already processed: ' + message.path)
-                    self._hass.loop.call_soon_threadsafe(
-                        gateway.delete_sms_message, message.path
-                    )
+                    gateway.delete_sms_message_sync(message.path)
