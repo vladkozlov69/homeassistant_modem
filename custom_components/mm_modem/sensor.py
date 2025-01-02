@@ -46,6 +46,7 @@ class GsmModemSmsSensor(Entity):
         else:
             self._remove_inc_sms = False
         self._processed_messages = set()
+        self._duplicated_content = set()
         hass.bus.async_listen(EVT_SMS_RECEIVED,
                               self._handle_sms_received)
         hass.bus.async_listen(EVT_SMS_FORGET,
@@ -91,6 +92,7 @@ class GsmModemSmsSensor(Entity):
 
     async def _handle_sms_forget(self, call):
         self._processed_messages = set()
+        self._duplicated_content = set()
         _LOGGER.debug('[_handle_sms_forget] Cleared processed_messages list')
         await self._handle_sms_received(call)
 
@@ -114,13 +116,12 @@ class GsmModemSmsSensor(Entity):
             _LOGGER.debug('[update] Messages count:' +
                           str(len(self._messages)))
 
-            duplicated_content = set()
             for message in self._messages:
                 message_content = message.number + '|' + message.text + '|' + message.timestamp
-                if (message.path not in self._processed_messages) and (message_content not in duplicated_content):
+                if (message.path not in self._processed_messages) and (message_content not in self._duplicated_content):
                     _LOGGER.debug(message.path)
-                    self._processed_messages.update({message.path})
-                    duplicated_content.update({message_content})
+                    self._processed_messages.add(message.path)
+                    self._duplicated_content.add(message_content)
                     logbook.log_entry( # FIXME should be sync here?
                         self._hass,
                         SMS_SENSOR_NAME,
@@ -139,4 +140,4 @@ class GsmModemSmsSensor(Entity):
 
                 else:
                     _LOGGER.debug('[update] Skipping as already processed: ' + message.path)
-                    gateway.delete_sms_message_sync(message.path)
+                    # gateway.delete_sms_message_sync(message.path)

@@ -47,7 +47,7 @@ class GsmModemSmsSensorTest(unittest.TestCase):
         assert sensor.state == 2
         mock_gateway.get_sms_messages.return_value = [
             SmsMessage(path='/m/p/1', number='01234', text='msg text', timestamp='dd-mm-2025'),
-            SmsMessage(path='/m/p/3', number='01234', text='msg text2', timestamp='dd-mm-2025'),
+            SmsMessage(path='/m/p/3', number='01234', text='msg text3', timestamp='dd-mm-2025'),
         ]
         sensor.update()
         assert sensor.state == 2
@@ -58,7 +58,7 @@ class GsmModemSmsSensorTest(unittest.TestCase):
             call(event_type='mm_modem_incoming_sms',
                  event_data={'path': '/m/p/2', 'number': '01234', 'timestamp': 'dd-mm-2025', 'text': 'msg text2'}),
             call(event_type='mm_modem_incoming_sms',
-                 event_data={'path': '/m/p/3', 'number': '01234', 'timestamp': 'dd-mm-2025', 'text': 'msg text2'})
+                 event_data={'path': '/m/p/3', 'number': '01234', 'timestamp': 'dd-mm-2025', 'text': 'msg text3'})
         ]
         mock_bus.fire.assert_has_calls(calls)
         assert mock_bus.fire.call_count == 3
