@@ -10,7 +10,9 @@ from .const import (
     CONF_REMOVE_INCOMING_SMS,
     EVT_SMS_RECEIVED,
     EVT_SMS_FORGET,
-    SENSOR_LASTUPD
+    SENSOR_LASTUPD,
+    SMS_SENSOR_ID,
+    SMS_SENSOR_NAME
 )
 
 from homeassistant.helpers.entity import Entity
@@ -20,8 +22,7 @@ from homeassistant.components import logbook
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
 
-SENSOR_ID = 'mm_modem.incoming_sms'
-SENSOR_NAME = 'GSM Modem SMS'
+
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -59,12 +60,12 @@ class GsmModemSmsSensor(Entity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return SENSOR_NAME
+        return SMS_SENSOR_NAME
 
     @property
     def unique_id(self):
         """Return a unique ID."""
-        return SENSOR_ID
+        return SMS_SENSOR_ID
 
     @property
     def state(self):
@@ -122,10 +123,10 @@ class GsmModemSmsSensor(Entity):
                     duplicated_content.update({message_content})
                     logbook.log_entry( # FIXME should be sync here?
                         self._hass,
-                        SENSOR_NAME,
+                        SMS_SENSOR_NAME,
                         message.text,
                         DOMAIN,
-                        SENSOR_ID)
+                        SMS_SENSOR_ID)
 
                     _LOGGER.debug('[update] Firing event: ' + DOMAIN + '_incoming_sms for ' + message.path)
                     self._hass.bus.fire(event_type=DOMAIN + '_incoming_sms',

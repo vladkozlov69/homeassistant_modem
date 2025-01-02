@@ -6,6 +6,7 @@ import time
 import threading
 
 from homeassistant.core import callback
+from homeassistant.components import logbook
 
 from .const import (
     ATTR_CONNECTION_NAME,
@@ -13,7 +14,10 @@ from .const import (
     EVT_MODEM_DISCONNECTED,
     EVT_LTE_CONNECTED,
     EVT_LTE_DISCONNECTED,
-    EVT_SMS_RECEIVED
+    EVT_SMS_RECEIVED,
+    DOMAIN,
+    SMS_SENSOR_ID,
+    SMS_SENSOR_NAME
 )
 
 from .sms_message import SmsMessage
@@ -358,6 +362,12 @@ class Gateway:
         """Callback method called when GSM call initiated"""
         message_path = user_data[0][1]
         _LOG.info('Deleted SMS ' + message_path)
+        logbook.log_entry(  # FIXME should be sync here?
+            self._hass,
+            SMS_SENSOR_NAME,
+            'SMS Deleted: ' + message_path,
+            DOMAIN,
+            SMS_SENSOR_ID)
 
     async def delete_sms_message(self, message_path):
         if self._messaging is None:
