@@ -137,7 +137,7 @@ class GsmModemSmsSensor(Entity):
                     self._processed_messages.add(message.path)
                     self._duplicated_content.add(message_content)
 
-                    await logbook.async_log_entry( # FIXME should be sync here?
+                    logbook.async_log_entry( # FIXME should be sync here?
                         self._hass,
                         SMS_SENSOR_NAME,
                         message.text,
