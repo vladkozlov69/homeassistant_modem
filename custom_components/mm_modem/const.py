@@ -17,6 +17,7 @@ EVT_LTE_CONNECTED = DOMAIN + '_lte_connected'
 EVT_LTE_DISCONNECTED = DOMAIN + '_lte_disconnected'
 EVT_SMS_RECEIVED = DOMAIN + '_sms_received'
 EVT_SMS_FORGET = DOMAIN + '_sms_forget'
+EVT_SMS_DELETE = DOMAIN + '_sms_delete'
 
 SMS_SENSOR_ID = 'mm_modem.incoming_sms'
 SMS_SENSOR_NAME = 'GSM Modem SMS'
