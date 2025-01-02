@@ -124,8 +124,8 @@ class GsmModemSmsSensor(Entity):
                         SENSOR_ID)
 
                     _LOGGER.debug('[update] Firing event: ' + DOMAIN + '_incoming_sms for ' + message.path)
-                    self._hass.bus.async_fire_internal(DOMAIN + '_incoming_sms', #FIXME
-                                              {'path': message.path,
+                    self._hass.bus.fire(event_type=DOMAIN + '_incoming_sms',
+                                              event_data={'path': message.path,
                                                'number': message.number,
                                                'timestamp': message.timestamp,
                                                'text': message.text})

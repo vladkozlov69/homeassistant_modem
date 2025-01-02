@@ -339,7 +339,7 @@ class Gateway:
             sms_list = self._messaging.list_sync(None)
             messages = []
             for message in sms_list:
-                if(ModemManager.SmsState.RECEIVED == message.get_state()):
+                if ModemManager.SmsState.RECEIVED == message.get_state():
                     messages.append(SmsMessage(
                                         path=message.get_path(),
                                         number=message.get_number(),
@@ -355,7 +355,7 @@ class Gateway:
             _LOG.error(NO_MODEM_FOUND)
             raise GSMGatewayException(NO_MODEM_FOUND)
         else:
-            self._messaging.call_delete(message_path)
+            await self._messaging.call_delete(message_path)
             _LOG.info('Deleted SMS ' + message_path)
 
 
