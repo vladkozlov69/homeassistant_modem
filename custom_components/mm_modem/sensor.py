@@ -4,6 +4,8 @@ import logging
 
 from datetime import datetime
 
+from homeassistant.core import Event
+
 from .const import (
     DOMAIN,
     MODEM_GATEWAY,
@@ -98,8 +100,8 @@ class GsmModemSmsSensor(Entity):
         _LOGGER.debug('[_handle_sms_forget] Cleared processed_messages list')
         await self._handle_sms_received(call)
 
-    async def _handle_sms_delete(self, call):
-        _LOGGER.debug('_handle_sms_delete:' + call.path)
+    async def _handle_sms_delete(self, call: Event):
+        _LOGGER.debug('_handle_sms_delete:' + call.data['path'])
 
     def update(self):
         """Fetch new state data for the sensor.
