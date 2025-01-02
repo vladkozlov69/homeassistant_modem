@@ -99,7 +99,7 @@ class GsmModemSmsSensor(Entity):
         await self._handle_sms_received(call)
 
     async def _handle_sms_delete(self, call):
-        _LOGGER.debug('_handle_sms_delete:' + str(call))
+        _LOGGER.debug('_handle_sms_delete:' + call.path)
 
     def update(self):
         """Fetch new state data for the sensor.
