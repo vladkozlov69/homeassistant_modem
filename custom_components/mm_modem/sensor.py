@@ -21,6 +21,8 @@ from homeassistant.helpers.entity import Entity
 
 from homeassistant.components import logbook
 
+from .exceptions import GSMGatewayException
+
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
 
@@ -101,7 +103,12 @@ class GsmModemSmsSensor(Entity):
         await self._handle_sms_received(call)
 
     async def _handle_sms_delete(self, call: Event):
+        message_path = call.data['path']
+        if message_path is None:
+            raise GSMGatewayException('No message path specified')
         _LOGGER.debug('_handle_sms_delete:' + call.data['path'])
+        gateway = self.get_gateway()
+        await gateway.delete_sms_message(message_path)
 
     def update(self):
         """Fetch new state data for the sensor.
