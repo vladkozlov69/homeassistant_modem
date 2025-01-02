@@ -110,7 +110,7 @@ class GsmModemSmsSensor(Entity):
         gateway = self.get_gateway()
         await gateway.delete_sms_message(message_path)
 
-    def update(self):
+    async def async_update(self):
         """Fetch new state data for the sensor.
         This is the only method that should fetch new data for Home Assistant.
         """
@@ -136,7 +136,8 @@ class GsmModemSmsSensor(Entity):
                     _LOGGER.debug(message.path)
                     self._processed_messages.add(message.path)
                     self._duplicated_content.add(message_content)
-                    logbook.log_entry( # FIXME should be sync here?
+
+                    await logbook.async_log_entry( # FIXME should be sync here?
                         self._hass,
                         SMS_SENSOR_NAME,
                         message.text,
@@ -144,14 +145,14 @@ class GsmModemSmsSensor(Entity):
                         SMS_SENSOR_ID)
 
                     _LOGGER.debug('[update] Firing event: ' + DOMAIN + '_incoming_sms for ' + message.path)
-                    self._hass.bus.fire(event_type=DOMAIN + '_incoming_sms',
+                    await self._hass.bus.async_fire(event_type=DOMAIN + '_incoming_sms',
                                         event_data={'path': message.path,
                                                'number': message.number,
                                                'timestamp': message.timestamp,
                                                'text': message.text})
                     if self._remove_inc_sms:
-                        gateway.delete_sms_message_sync(message.path)
+                        gateway.delete_sms_message(message.path)
 
                 else:
                     _LOGGER.debug('[update] Skipping as already processed: ' + message.path)
-                    # TODO remove old SMS here
+                    gateway.delete_sms_message(message.path)
