@@ -362,10 +362,11 @@ class Gateway:
         """Callback method called when GSM call initiated"""
         message_path = user_data[0][1]
         _LOG.info('Deleted SMS ' + message_path)
+        result = self._messaging.call_delete_finish(res)
         logbook.log_entry(  # FIXME should be sync here?
             self._hass,
             SMS_SENSOR_NAME,
-            'SMS Deleted: ' + message_path,
+            'SMS Deleted: ' + message_path + ' => ' + result,
             DOMAIN,
             SMS_SENSOR_ID)
 

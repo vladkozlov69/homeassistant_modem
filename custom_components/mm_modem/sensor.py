@@ -139,3 +139,6 @@ class GsmModemSmsSensor(Entity):
 
                 else:
                     _LOGGER.debug('[update] Skipping as already processed: ' + message.path)
+                    self._hass.loop.call_soon_threadsafe(
+                        gateway.delete_sms_message, message.path
+                    )
