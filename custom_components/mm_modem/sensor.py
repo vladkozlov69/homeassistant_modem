@@ -93,7 +93,7 @@ class GsmModemSmsSensor(Entity):
         return True
 
     async def _handle_sms_received(self, call):
-        self.update()
+        await self.async_update()
         self.async_write_ha_state()
 
     async def _handle_sms_forget(self, call):
