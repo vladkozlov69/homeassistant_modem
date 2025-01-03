@@ -84,6 +84,7 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
 
         mock_bus.async_fire.assert_has_calls(calls)
         assert mock_bus.async_fire.call_count == len(calls)
+        mock_gateway.delete_sms_message.assert_called_once_with('/m/p/1')
 
     async def test_update_new_messages_filter_duplicates(self):
         mock_gateway = Mock(spec=Gateway)
@@ -107,6 +108,7 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
 
         mock_bus.async_fire.assert_has_calls(calls)
         assert mock_bus.async_fire.call_count == len(calls)
+        mock_gateway.delete_sms_message.assert_called_once_with('/m/p/2')
 
 
 if __name__ == '__main__':
