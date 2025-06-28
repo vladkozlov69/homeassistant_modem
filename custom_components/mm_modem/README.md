@@ -51,7 +51,7 @@ ResultAny=yes
 /usr/share/polkit-1/rules.d/org.freedesktop.ModemManager.rules
 ====
 polkit.addRule(function(action, subject) {
-    if (action.id.indexOf("org.freedesktop.ModemManager.") > 0 {
+    if (action.id.indexOf("ModemManager") > 0) {
         return polkit.Result.YES;
     }
 });
