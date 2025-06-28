@@ -374,7 +374,7 @@ class Gateway:
             _LOG.error(NO_MODEM_FOUND)
             raise GSMGatewayException(NO_MODEM_FOUND)
         else:
-            self._messaging.call_delete(message_path,
+            await self._messaging.call_delete(message_path,
                                         cancellable=None,
                                         callback=self.on_sms_deleted,
                                         user_data=(None, message_path))
