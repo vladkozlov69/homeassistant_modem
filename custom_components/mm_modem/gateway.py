@@ -224,8 +224,8 @@ class Gateway:
         sms_properties.set_text(message)
 
         # Connection to ModemManager
-        connection = Gio.bus_get_sync (Gio.BusType.SYSTEM, None)
-        manager = ModemManager.Manager.new_sync (connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
+        connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        manager = ModemManager.Manager.new_sync(connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
         if manager.get_name_owner() is None:
             _LOG.error('ModemManager not found in bus')
             raise GSMGatewayException('ModemManager not found in bus')
@@ -374,20 +374,11 @@ class Gateway:
             _LOG.error(NO_MODEM_FOUND)
             raise GSMGatewayException(NO_MODEM_FOUND)
         else:
-            self._messaging.call_delete(message_path,
+            await self._messaging.call_delete(message_path,
                                         cancellable=None,
                                         callback=self.on_sms_deleted,
                                         user_data=(None, message_path))
             _LOG.info('Deleting SMS ' + message_path)
-
-
-    def delete_sms_message_sync(self, message_path):
-        if self._messaging is None:
-            _LOG.error(NO_MODEM_FOUND)
-            raise GSMGatewayException(NO_MODEM_FOUND)
-        else:
-            self._messaging.call_delete_sync(message_path)
-            _LOG.info('Deleted SMS ' + message_path)
 
 
 def create_modem_gateway(config_entry, hass):
