@@ -217,6 +217,14 @@ class Gateway:
             _LOG.warning(NO_MODEM_FOUND)
         return None
 
+    def get_mm_modem3gpp(self, show_warning=True):
+        """Gets ModemManager modem"""
+        if self._modem_object is not None:
+            return self._modem_object.get_modem3gpp()
+        if show_warning:
+            _LOG.warning(NO_MODEM_FOUND)
+        return None
+
     def send_sms(self, number, message):
         """Send sms message via the worker."""
         sms_properties = ModemManager.SmsProperties.new()
@@ -270,6 +278,7 @@ class Gateway:
     def get_modem_state(self):
         """Get the current state of the modem."""
         modem = self.get_mm_modem(False)
+        modem3gpp = self.get_mm_modem3gpp(True)
         if modem is None:
             # _LOG.warning(NO_MODEM_FOUND)
             return None
@@ -277,7 +286,8 @@ class Gateway:
         return {
             'status': ModemManager.ModemState.get_string(modem_state),
             'signal': modem.get_signal_quality(),
-            'operator': modem.get_sim_sync().get_operator_name()
+            'operator': modem3gpp.get_sim_sync().get_operator_name()
+            # 'operator': modem.get_sim_sync().get_operator_name()
         }
 
     def _active_connection_added_cb(self, client, connection):

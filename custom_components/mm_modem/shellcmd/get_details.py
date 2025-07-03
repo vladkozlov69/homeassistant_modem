@@ -36,4 +36,5 @@ if __name__ == "__main__":
     for obj in manager.get_objects():
         modem3gpp = obj.get_modem3gpp()
         print(modem3gpp)
+        print(modem3gpp.get_operator_name())
 
