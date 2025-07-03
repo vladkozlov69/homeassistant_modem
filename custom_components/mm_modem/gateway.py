@@ -286,7 +286,7 @@ class Gateway:
         return {
             'status': ModemManager.ModemState.get_string(modem_state),
             'signal': modem.get_signal_quality(),
-            'operator': modem3gpp.get_sim_sync().get_operator_name()
+            'operator': modem3gpp.get_operator_name()
             # 'operator': modem.get_sim_sync().get_operator_name()
         }
 
