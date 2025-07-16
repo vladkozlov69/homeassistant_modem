@@ -337,17 +337,17 @@ class Gateway:
                 client.deactivate_connection_async(c, None, self._deactivate_connection_async_cb)
 
     def get_lte_state(self):
-        conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
+#        conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
         # if _LOG.isEnabledFor(logging.DEBUG):
         #     _LOG.debug("Configured connection name: %s", conn_name)
 
         # Find the connection
         client = NM.Client.new(None)
         connections = client.get_active_connections()
-        for c in connections:
+#        for c in connections:
             # _LOG.debug("=== %s : %s ===" % (c.get_id(), c.get_path()))
-            if c.get_id() == conn_name:
-                return True
+#            if c.get_id() == conn_name:
+#                return True
 
         return False
 
