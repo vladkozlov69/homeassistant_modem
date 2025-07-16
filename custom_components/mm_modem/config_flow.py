@@ -10,21 +10,29 @@ DATA_SCHEMA = vol.Schema(
     }
 )
 
-_LOGGER = logging.getLogger(__name__)
+_LOG = logging.getLogger(__name__)
+_LOG.setLevel(logging.DEBUG)
 
+type ConfigType = Mapping[str, Any] | None
 
-class MDMLinkConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
+class MDMConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """MDMLink config flow."""
 
-    async def async_step_import(self, user_input=None):
+    def __init__(self) -> None:
+        """Init config flow."""
+        self._errors = {}
+
+    async def async_step_import(
+        self, platform_config: ConfigType
+    ) -> config_entries.ConfigFlowResult:
+        _LOG.info("platform_config")
+        _LOG.info(platform_config)
+        return self.async_create_entry(title="configuration.yaml", data=platform_config)
+
+
+    async def async_step_user(self, user_input: ConfigType = None) -> config_entries.ConfigFlowResult:
         """Import a config entry."""
-        if self._async_current_entries():
-            for entry in self._async_current_entries(include_ignore=True):
-                if user_input is not None:
-                    self.hass.config_entries.async_update_entry(
-                        entry, data=user_input
-                    )
-                    raise data_entry_flow.AbortFlow("already_configured")
-        else:
-            return self.async_create_entry(title="MDMLink Config",
-                                           data=user_input)
+        user_input = {}
+        return self.async_create_entry(title="MDMLink Config", data={})
+#        pass
+        #return self.async_abort(reason="DDD")
