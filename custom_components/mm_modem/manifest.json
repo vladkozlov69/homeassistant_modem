@@ -4,6 +4,6 @@
   "documentation": "https://github.com/vladkozlov69/homeassistant_modem",
   "requirements": [],
   "codeowners": ["@vladkozlov69"],
-  "config_flow": true,
+  "config_flow": false,
   "version": "1.1.0"
 }

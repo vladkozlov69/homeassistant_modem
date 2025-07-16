@@ -34,6 +34,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     _LOGGER.debug(config_entry.data)
     async_add_entities([GsmModemSmsSensor(hass, config_entry)])
 
+def setup_platform(hass, config, add_entities, discovery_info=None):
+    """Set up the modem sensor from YAML."""
+    add_entities([GsmModemSmsSensor(hass, config)])
 
 class GsmModemSmsSensor(Entity):
     """Representation of a Sensor."""
@@ -45,8 +48,8 @@ class GsmModemSmsSensor(Entity):
         self._lastupdate = datetime.now()
         self._hass = hass
         self._messages = []
-        if CONF_REMOVE_INCOMING_SMS in conf_entry.data:
-            self._remove_inc_sms = conf_entry.data[CONF_REMOVE_INCOMING_SMS]
+        if CONF_REMOVE_INCOMING_SMS in conf_entry:
+            self._remove_inc_sms = conf_entry[CONF_REMOVE_INCOMING_SMS]
         else:
             self._remove_inc_sms = False
         self._processed_messages = set()
@@ -62,7 +65,9 @@ class GsmModemSmsSensor(Entity):
 
     def get_gateway(self):
         """Returns the modem gateway instance from hass scope"""
-        return self._hass.data[DOMAIN][MODEM_GATEWAY]
+        if MODEM_GATEWAY in self._hass.data[DOMAIN]:
+            return self._hass.data[DOMAIN][MODEM_GATEWAY]
+        return None
 
     @property
     def name(self):
