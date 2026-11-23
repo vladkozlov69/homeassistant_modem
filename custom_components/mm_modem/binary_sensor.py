@@ -75,7 +75,9 @@ class GsmModemSensor(BinarySensorEntity):
 
     def get_gateway(self):
         """Returns the modem gateway instance from hass scope"""
-        return self.hass.data[DOMAIN][MODEM_GATEWAY]
+        if MODEM_GATEWAY in self.hass.data[DOMAIN]:
+            return self.hass.data[DOMAIN][MODEM_GATEWAY]
+        return None
 
     @property
     def name(self):

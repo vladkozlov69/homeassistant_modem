@@ -15,6 +15,8 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 
+from homeassistant.helpers import discovery
+
 from .const import (
     DOMAIN,
     MODEM_GATEWAY,
@@ -62,18 +64,29 @@ _LOGGER.setLevel(logging.DEBUG)
 
 async def async_setup(hass, config):
     """Import integration from config."""
-
+    _LOGGER.info(config) 
     if DOMAIN in config:
         _LOGGER.debug(config[DOMAIN])
-        hass.async_create_task(
-            hass.config_entries.flow.async_init(
-                DOMAIN, context={"source": SOURCE_IMPORT}, data=config[DOMAIN]
-            )
-        )
+#        hass.async_create_task(
+#            hass.config_entries.flow.async_init(
+#                DOMAIN, context={"source": SOURCE_IMPORT}, data=config[DOMAIN]
+#            )
+#        )
+    conf = config.get(DOMAIN)
+    if conf is None:
+        _LOGGER.debug("No config for %s, skipping setup.", DOMAIN)
+        return True
+
+    hass.data[DOMAIN] = conf
+
+    await async_setup_modem(hass, conf)
+    _LOGGER.debug("Loading sensor platform")
+    await discovery.async_load_platform(hass, "sensor", DOMAIN, conf, config)
+    await discovery.async_load_platform(hass, "binary_sensor", DOMAIN, conf, config) 
     return True
 
 
-async def async_setup_entry(hass, config_entry):
+async def async_setup_modem(hass, config_entry):
     """Set up the LTE Modem component."""
 
     @callback
