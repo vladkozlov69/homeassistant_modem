@@ -6,11 +6,13 @@ information, and provides services for SMS, dialing, and LTE connection control.
 
 ## Installation
 
-On the `develop` branch, the integration files are in
-`custom_components/mm_modem` within this repository. Install that directory as
-`custom_components/mm_modem` in the Home Assistant configuration. Adding this
-entire repository as a submodule at that destination nests the integration one
-level too deep for Home Assistant to discover it.
+The integration files are at the root of this repository. Add this repository
+as a submodule at `custom_components/mm_modem` in a Home Assistant configuration
+repository, or copy the repository contents to that directory:
+
+```sh
+git submodule add -b develop git@github.com:vladkozlov69/homeassistant_modem.git custom_components/mm_modem
+```
 
 The Home Assistant host must have ModemManager and NetworkManager configured for
 the modem, and the Home Assistant process must have permission to access them.
@@ -19,26 +21,28 @@ for host setup details.
 
 ## Configuration
 
-Add the integration to `configuration.yaml`; it will be imported into the
-Home Assistant integration setup:
+Configure the integration in `configuration.yaml`:
 
 ```yaml
 mm_modem:
   connection_name: Unite
+  remove_incoming_sms: false
 ```
 
-`connection_name` is the NetworkManager connection profile used when bringing
-the LTE connection up or down. It can also be changed in the integration's
-options.
+`connection_name` selects the NetworkManager profile used by the LTE services.
+`remove_incoming_sms` controls whether incoming messages are removed after
+processing.
 
 ## Entities and services
 
 The integration creates a connectivity binary sensor with modem status,
 operator, and signal strength attributes. It registers these services:
 
-- `mm_modem.send_sms` with `phone_number` and `message` fields.
-- `mm_modem.dial` with a `phone_number` field.
-- `mm_modem.lte_up` and `mm_modem.lte_down` to control the configured LTE connection.
+- `mm_modem.send_sms` with `number` and `message` fields.
+- `mm_modem.delete_sms` with an `sms_path` field.
+- `mm_modem.dial` with a `number` field.
+- `mm_modem.lte_up`, `mm_modem.lte_down`, and `mm_modem.sms_forget`.
 
-The integration requires `python-networkmanager` and a working Linux
-ModemManager/NetworkManager setup.
+The integration requires Linux ModemManager and NetworkManager, including the
+GObject introspection bindings listed in `requirements.txt`. The Home Assistant
+process must be able to access the system D-Bus and manage the modem.
