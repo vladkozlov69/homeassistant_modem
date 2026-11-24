@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Vladimir Kozlov <vkozloff@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """Support for Dial notification services."""
 
 import logging

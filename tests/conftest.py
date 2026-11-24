@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Vladimir Kozlov <vkozloff@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """Test setup for mm_modem unit tests.
 
 Stubs native GI/Home Assistant dependencies when unavailable so package modules
