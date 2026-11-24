@@ -3,9 +3,9 @@ from unittest.mock import Mock, call
 
 from homeassistant.core import EventBus
 
-from custom_components.mm_modem.gateway import Gateway
-from custom_components.mm_modem.sensor import GsmModemSmsSensor
-from custom_components.mm_modem.sms_message import SmsMessage
+from mm_modem.gateway import Gateway
+from mm_modem.sensor import GsmModemSmsSensor
+from mm_modem.sms_message import SmsMessage
 
 
 class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
