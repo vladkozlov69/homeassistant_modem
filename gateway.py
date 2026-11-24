@@ -1,40 +1,38 @@
+# Copyright (c) 2026 Vladimir Kozlov <vkozloff@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """The sms gateway to interact with a GSM modem."""
+
 import logging
+import threading
+import time
+from collections.abc import Mapping
 
 import gi
-import time
-import threading
-
-from homeassistant.core import callback
 from homeassistant.components import logbook
+from homeassistant.core import callback
 
 from .const import (
     ATTR_CONNECTION_NAME,
-    EVT_MODEM_CONNECTED,
-    EVT_MODEM_DISCONNECTED,
+    CONF_CONNECTION_NAME,
+    DOMAIN,
     EVT_LTE_CONNECTED,
     EVT_LTE_DISCONNECTED,
+    EVT_MODEM_CONNECTED,
+    EVT_MODEM_DISCONNECTED,
     EVT_SMS_RECEIVED,
-    DOMAIN,
     SMS_SENSOR_ID,
-    SMS_SENSOR_NAME
+    SMS_SENSOR_NAME,
 )
-
-from .sms_message import SmsMessage
 from .exceptions import GSMGatewayException
+from .sms_message import SmsMessage
 
-gi.require_version('ModemManager', '1.0')
+gi.require_version("ModemManager", "1.0")
 gi.require_version("NM", "1.0")
 
-from gi.repository import GLib, Gio, ModemManager
-from gi.repository import NM
-
-#from dbus.mainloop.glib import DBusGMainLoop
-
-#DBusGMainLoop(set_as_default=True)
+from gi.repository import Gio, GLib, ModemManager, NM
 
 _LOG = logging.getLogger(__name__)
-_LOG.setLevel(logging.DEBUG)
 
 NO_MODEM_FOUND = "No modem found"
 
@@ -59,6 +57,22 @@ class Gateway:
         """Initialize the sms gateway."""
         self._hass = hass
         self._config_entry = config_entry
+
+    def _get_config_value(self, key, default=None):
+        """Read config values from YAML mappings or config-entry-like objects."""
+        config = self._config_entry
+        if config is None:
+            return default
+        if hasattr(config, "data") and isinstance(getattr(config, "data"), Mapping):
+            data = config.data
+            if key in data:
+                return data[key]
+            options = getattr(config, "options", None)
+            if isinstance(options, Mapping) and key in options:
+                return options[key]
+        if isinstance(config, Mapping):
+            return config.get(key, default)
+        return getattr(config, key, default)
 
     async def async_added_to_hass(self):
         """Handle when an entity is about to be added to Home Assistant."""
@@ -172,32 +186,38 @@ class Gateway:
                 self.on_object_added(self._manager, obj)
 
     def set_unavailable(self):
-        """ModemManager is now unavailable"""
+        """ModemManager is now unavailable."""
         if self._available or self._initializing:
-            _LOG.warning('ModemManager service not available in bus')
+            _LOG.warning("ModemManager service not available in bus")
             self._modem_object = None
 
-        if self._object_added_id:
+        if self._manager is not None and self._object_added_id:
             self._manager.disconnect(self._object_added_id)
             self._object_added_id = 0
-        if self._object_removed_id:
+        if self._manager is not None and self._object_removed_id:
             self._manager.disconnect(self._object_removed_id)
             self._object_removed_id = 0
 
-        if self._messaging_notify_id:
-            self._messaging.disconnect(self._messaging_notify_id)
-            self._messaging_notify_id = 0
+        if self._messaging is not None and self._messaging_notify_id:
+            try:
+                self._messaging.disconnect(self._messaging_notify_id)
+            except Exception:  # pragma: no cover - defensive cleanup
+                _LOG.debug("Failed to disconnect messaging notify handler", exc_info=True)
+        self._messaging_notify_id = 0
+        self._messaging = None
 
         self._available = False
 
     def on_object_removed(self, manager, obj):
-        """Modem disconnected"""
-        _LOG.warning('modem unmanaged by ModemManager: %s'
-                  % obj.get_object_path())
+        """Modem disconnected."""
+        _LOG.warning("modem unmanaged by ModemManager: %s", obj.get_object_path())
 
-        self._messaging.disconnect(self._messaging_notify_id)
+        if self._messaging is not None and self._messaging_notify_id:
+            try:
+                self._messaging.disconnect(self._messaging_notify_id)
+            except Exception:  # pragma: no cover - defensive cleanup
+                _LOG.debug("Failed to disconnect messaging notify handler", exc_info=True)
         self._messaging_notify_id = 0
-
         self._modem_object = None
         self._messaging = None
         self._hass.bus.fire(EVT_MODEM_DISCONNECTED, {})
@@ -231,30 +251,27 @@ class Gateway:
         sms_properties.set_number(number)
         sms_properties.set_text(message)
 
-        # Connection to ModemManager
         connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-        manager = ModemManager.Manager.new_sync(connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None)
+        manager = ModemManager.Manager.new_sync(
+            connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None
+        )
         if manager.get_name_owner() is None:
-            _LOG.error('ModemManager not found in bus')
-            raise GSMGatewayException('ModemManager not found in bus')
+            _LOG.error("ModemManager not found in bus")
+            raise GSMGatewayException("ModemManager not found in bus")
 
-        # Iterate modems and send SMS with each
+        sent = False
         for obj in manager.get_objects():
             messaging = obj.get_modem_messaging()
+            if messaging is None:
+                continue
             sms = messaging.create_sync(sms_properties)
-            print('%s: sms sending' % messaging.get_object_path())
             sms.send_sync()
-            print('%s: sms sent' % messaging.get_object_path()) 
-        #messaging = self._messaging
-        #print(messaging)
-        #if messaging is not None:
-        #    sms = messaging.create_sync(sms_properties)
-        #    print(sms)
-        #    sms.send_sync()
-        #    _LOG.info('%s: sms sent', messaging.get_object_path())
-        #else:
-        #    _LOG.error(NO_MODEM_FOUND)
-        #    raise GSMGatewayException(NO_MODEM_FOUND)
+            _LOG.debug("SMS sent via %s", messaging.get_object_path())
+            sent = True
+
+        if not sent:
+            _LOG.error(NO_MODEM_FOUND)
+            raise GSMGatewayException(NO_MODEM_FOUND)
 
     def dial_voice(self, number):
         """Initiale voice call"""
@@ -278,16 +295,20 @@ class Gateway:
     def get_modem_state(self):
         """Get the current state of the modem."""
         modem = self.get_mm_modem(False)
-        modem3gpp = self.get_mm_modem3gpp(True)
+        modem3gpp = self.get_mm_modem3gpp(False)
         if modem is None:
-            # _LOG.warning(NO_MODEM_FOUND)
             return None
         modem_state = modem.get_state()
+        operator = None
+        if modem3gpp is not None:
+            try:
+                operator = modem3gpp.get_operator_name()
+            except Exception:  # pragma: no cover - backend dependent
+                operator = None
         return {
-            'status': ModemManager.ModemState.get_string(modem_state),
-            'signal': modem.get_signal_quality(),
-            'operator': modem3gpp.get_operator_name()
-            # 'operator': modem.get_sim_sync().get_operator_name()
+            "status": ModemManager.ModemState.get_string(modem_state),
+            "signal": modem.get_signal_quality(),
+            "operator": operator,
         }
 
     def _active_connection_added_cb(self, client, connection):
@@ -306,89 +327,127 @@ class Gateway:
 
     def lte_up(self):
         """LTE Up."""
-        conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
-        if _LOG.isEnabledFor(logging.DEBUG):
-            _LOG.debug("Configured connection name: %s", conn_name)
+        conn_name = self._get_config_value(CONF_CONNECTION_NAME) or self._get_config_value(
+            ATTR_CONNECTION_NAME
+        )
+        _LOG.debug("Configured connection name: %s", conn_name)
+        if not conn_name:
+            _LOG.warning("No LTE connection name configured")
+            return
 
-        # Find the connection
-        client = NM.Client.new(None)
-        client.connect("active-connection-added", self._active_connection_added_cb)
-        connections = client.get_connections()
-        for c in connections:
-            _LOG.debug("=== %s : %s ===" % (c.get_id(), c.get_path()))
-            if c.get_id() == conn_name:
-                _LOG.info("Activating  %s %s" % (c.get_id(), c.get_path()))
-                client.activate_connection_async(c, None, None, None, self._activate_connection_async_cb)
+        try:
+            client = NM.Client.new(None)
+            client.connect("active-connection-added", self._active_connection_added_cb)
+            connections = client.get_connections() or []
+            for conn in connections:
+                _LOG.debug("=== %s : %s ===", conn.get_id(), conn.get_path())
+                if conn.get_id() == conn_name:
+                    _LOG.info("Activating %s %s", conn.get_id(), conn.get_path())
+                    client.activate_connection_async(
+                        conn, None, None, None, self._activate_connection_async_cb
+                    )
+                    return
+            _LOG.warning("Configured LTE connection not found: %s", conn_name)
+        except Exception:
+            _LOG.exception("Failed to activate LTE connection")
 
     def lte_down(self):
         """LTE Down."""
-        conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
-        if _LOG.isEnabledFor(logging.DEBUG):
-            _LOG.debug("Configured connection name: %s", conn_name)
+        conn_name = self._get_config_value(CONF_CONNECTION_NAME) or self._get_config_value(
+            ATTR_CONNECTION_NAME
+        )
+        _LOG.debug("Configured connection name: %s", conn_name)
+        if not conn_name:
+            _LOG.warning("No LTE connection name configured")
+            return
 
-        # Find the connection
-        client = NM.Client.new(None)
-        client.connect("active-connection-removed", self._active_connection_removed_cb)
-        connections = client.get_active_connections()
-        for c in connections:
-            _LOG.debug("=== %s : %s ===" % (c.get_id(), c.get_path()))
-            if c.get_id() == conn_name:
-                _LOG.info("Deactivating %s %s" % (c.get_id(), c.get_path()))
-                client.deactivate_connection_async(c, None, self._deactivate_connection_async_cb)
+        try:
+            client = NM.Client.new(None)
+            client.connect("active-connection-removed", self._active_connection_removed_cb)
+            connections = client.get_active_connections() or []
+            for conn in connections:
+                _LOG.debug("=== %s : %s ===", conn.get_id(), conn.get_path())
+                if conn.get_id() == conn_name:
+                    _LOG.info("Deactivating %s %s", conn.get_id(), conn.get_path())
+                    client.deactivate_connection_async(
+                        conn, None, self._deactivate_connection_async_cb
+                    )
+                    return
+            _LOG.debug("Configured LTE connection is not active: %s", conn_name)
+        except Exception:
+            _LOG.exception("Failed to deactivate LTE connection")
 
     def get_lte_state(self):
-#        conn_name = self._config_entry.data[ATTR_CONNECTION_NAME]
-        # if _LOG.isEnabledFor(logging.DEBUG):
-        #     _LOG.debug("Configured connection name: %s", conn_name)
+        """Return True if the configured LTE connection is active."""
+        conn_name = self._get_config_value(CONF_CONNECTION_NAME) or self._get_config_value(
+            ATTR_CONNECTION_NAME
+        )
+        if not conn_name:
+            return False
 
-        # Find the connection
-        client = NM.Client.new(None)
-        connections = client.get_active_connections()
-#        for c in connections:
-            # _LOG.debug("=== %s : %s ===" % (c.get_id(), c.get_path()))
-#            if c.get_id() == conn_name:
-#                return True
-
+        try:
+            client = NM.Client.new(None)
+            connections = client.get_active_connections() or []
+            for conn in connections:
+                if conn.get_id() == conn_name:
+                    return True
+        except Exception:
+            _LOG.exception("Failed to read LTE connection state")
+            return False
         return False
 
 
     def get_sms_messages(self):
-        if self._messaging is not None:
-            sms_list = self._messaging.list_sync(None)
-            messages = []
-            for message in sms_list:
-                if ModemManager.SmsState.RECEIVED == message.get_state():
-                    messages.append(SmsMessage(
-                                        path=message.get_path(),
-                                        number=message.get_number(),
-                                        text=message.get_text(),
-                                        timestamp=message.get_timestamp()
-                                    ))
-            return messages
-        else:
+        """Return received SMS messages from the modem."""
+        if self._messaging is None:
+            return None
+        try:
+            sms_list = self._messaging.list_sync(None) or []
+        except Exception:
+            _LOG.exception("Failed to list SMS messages")
             return None
 
-    def on_sms_deleted(self, source_object, res, *user_data):
-        """Callback method called when GSM call initiated"""
-        message_path = user_data[0][1]
-        _LOG.info('Deleted SMS ' + message_path)
-        logbook.log_entry(  # FIXME should be sync here?
-            self._hass,
-            SMS_SENSOR_NAME,
-            'SMS Deleted: ' + message_path,
-            DOMAIN,
-            SMS_SENSOR_ID)
+        messages = []
+        for message in sms_list:
+            try:
+                if ModemManager.SmsState.RECEIVED == message.get_state():
+                    messages.append(
+                        SmsMessage(
+                            path=message.get_path(),
+                            number=message.get_number(),
+                            text=message.get_text(),
+                            timestamp=message.get_timestamp(),
+                        )
+                    )
+            except Exception:
+                _LOG.exception("Failed to read SMS message")
+        return messages
 
     async def delete_sms_message(self, message_path):
-        if self._messaging is None:
+        """Delete SMS message from modem storage."""
+        messaging = self._messaging
+        if messaging is None:
             _LOG.error(NO_MODEM_FOUND)
             raise GSMGatewayException(NO_MODEM_FOUND)
-        else:
-            await self._messaging.call_delete(message_path,
-                                        cancellable=None,
-                                        callback=self.on_sms_deleted,
-                                        user_data=(None, message_path))
-            _LOG.info('Deleting SMS ' + message_path)
+
+        try:
+            delete_sync = getattr(messaging, "delete_sync", None)
+            if delete_sync is not None:
+                await self._hass.async_add_executor_job(delete_sync, message_path)
+            else:
+                call_delete = getattr(messaging, "call_delete", None)
+                if call_delete is None:
+                    raise GSMGatewayException("Messaging interface does not support delete")
+                result = call_delete(message_path, None)
+                if hasattr(result, "__await__"):
+                    await result
+        except GSMGatewayException:
+            raise
+        except Exception as err:
+            _LOG.exception("Failed to delete SMS %s", message_path)
+            raise GSMGatewayException(str(err)) from err
+
+        _LOG.info("Deleted SMS %s", message_path)
 
 
 def create_modem_gateway(config_entry, hass):

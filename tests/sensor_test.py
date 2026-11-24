@@ -1,5 +1,8 @@
+# Copyright (c) 2026 Vladimir Kozlov <vkozloff@gmail.com>
+# SPDX-License-Identifier: MIT
+
 import unittest
-from unittest.mock import Mock, call
+from unittest.mock import AsyncMock, Mock, call
 
 from homeassistant.core import EventBus
 
@@ -20,12 +23,15 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
     async def test_update_new_messages(self):
         mock_gateway = Mock(spec=Gateway)
         mock_bus = Mock(spec=EventBus)
+        mock_bus.async_listen = Mock(return_value=Mock())
+        mock_bus.async_fire = Mock()
         mock_gateway.get_sms_messages.return_value = [
             SmsMessage(path='/m/p/1', number='01234', text='msg text', timestamp='dd-mm-2025'),
             SmsMessage(path='/m/p/2', number='01234', text='msg text2', timestamp='dd-mm-2025'),
         ]
-        sensor = GsmModemSmsSensor(Mock(bus=mock_bus, data={'mm_modem': {'MM_MODEM_GATEWAY': mock_gateway}}),
-                                   Mock(data={}))
+        hass = Mock(bus=mock_bus, data={'mm_modem': {'MM_MODEM_GATEWAY': mock_gateway}})
+        hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *args: func(*args))
+        sensor = GsmModemSmsSensor(hass, Mock(data={}))
         await sensor.async_update()
         assert sensor.state == 2
 
@@ -47,8 +53,11 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
     async def test_update_new_messages_skip_existing(self):
         mock_gateway = Mock(spec=Gateway)
         mock_bus = Mock(spec=EventBus)
-        sensor = GsmModemSmsSensor(Mock(bus=mock_bus, data={'mm_modem': {'MM_MODEM_GATEWAY': mock_gateway}}),
-                                   Mock(data={}))
+        mock_bus.async_listen = Mock(return_value=Mock())
+        mock_bus.async_fire = Mock()
+        hass = Mock(bus=mock_bus, data={'mm_modem': {'MM_MODEM_GATEWAY': mock_gateway}})
+        hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *args: func(*args))
+        sensor = GsmModemSmsSensor(hass, Mock(data={}))
 
         mock_gateway.get_sms_messages.return_value = [
             SmsMessage(path='/m/p/1', number='01234', text='msg text', timestamp='dd-mm-2025'),
@@ -89,12 +98,15 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
     async def test_update_new_messages_filter_duplicates(self):
         mock_gateway = Mock(spec=Gateway)
         mock_bus = Mock(spec=EventBus)
+        mock_bus.async_listen = Mock(return_value=Mock())
+        mock_bus.async_fire = Mock()
         mock_gateway.get_sms_messages.return_value = [
             SmsMessage(path='/m/p/1', number='01234', text='msg text', timestamp='dd-mm-2025'),
             SmsMessage(path='/m/p/2', number='01234', text='msg text', timestamp='dd-mm-2025'),
         ]
-        sensor = GsmModemSmsSensor(Mock(bus=mock_bus, data={'mm_modem': {'MM_MODEM_GATEWAY': mock_gateway}}),
-                                   Mock(data={}))
+        hass = Mock(bus=mock_bus, data={'mm_modem': {'MM_MODEM_GATEWAY': mock_gateway}})
+        hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *args: func(*args))
+        sensor = GsmModemSmsSensor(hass, Mock(data={}))
         await sensor.async_update()
         assert sensor.state == 2
 
