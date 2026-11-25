@@ -23,16 +23,16 @@ class MMLteService:
         self.gateway = gateway
         self.hass = hass
 
-    async def lte_up(self):
+    async def lte_up(self, connection_name=None):
         """LTE Up."""
         if self.hass is not None:
-            await self.hass.async_add_executor_job(self.gateway.lte_up)
+            await self.hass.async_add_executor_job(self.gateway.lte_up, connection_name)
         else:
-            self.gateway.lte_up()
+            self.gateway.lte_up(connection_name)
 
-    async def lte_down(self):
+    async def lte_down(self, connection_name=None):
         """LTE Down."""
         if self.hass is not None:
-            await self.hass.async_add_executor_job(self.gateway.lte_down)
+            await self.hass.async_add_executor_job(self.gateway.lte_down, connection_name)
         else:
-            self.gateway.lte_down()
+            self.gateway.lte_down(connection_name)

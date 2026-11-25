@@ -53,6 +53,11 @@ class _BaseModemBinarySensor(BinarySensorEntity):
         self.hass = hass
         self._unsub_listeners = []
 
+    async def async_added_to_hass(self):
+        """Refresh initial state when entity is added."""
+        await self._async_update_state()
+        self.async_write_ha_state()
+
     async def async_will_remove_from_hass(self):
         """Clean up event listeners."""
         for unsub in self._unsub_listeners:

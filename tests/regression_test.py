@@ -89,6 +89,40 @@ class GatewayFixesTest(unittest.TestCase):
         with self.assertRaises(GSMGatewayException):
             gateway.dial_voice("12345")
 
+    def test_lte_up_uses_service_connection_name_override(self):
+        hass = Mock()
+        hass.bus = Mock()
+        hass.loop = None
+        gateway = Gateway({CONF_CONNECTION_NAME: "cfg-conn"}, hass)
+
+        conn = Mock()
+        conn.get_id.return_value = "svc-conn"
+        conn.get_path.return_value = "/nm/conn/1"
+        client = Mock()
+        client.get_connections.return_value = [conn]
+        gateway._nm_client = client
+
+        gateway.lte_up("svc-conn")
+
+        client.activate_connection_async.assert_called_once()
+
+    def test_lte_down_uses_service_connection_name_override(self):
+        hass = Mock()
+        hass.bus = Mock()
+        hass.loop = None
+        gateway = Gateway({CONF_CONNECTION_NAME: "cfg-conn"}, hass)
+
+        active = Mock()
+        active.get_id.return_value = "svc-conn"
+        active.get_path.return_value = "/nm/active/1"
+        client = Mock()
+        client.get_active_connections.return_value = [active]
+        gateway._nm_client = client
+
+        gateway.lte_down("svc-conn")
+
+        client.deactivate_connection_async.assert_called_once()
+
 
 class NotifyServiceTest(unittest.IsolatedAsyncioTestCase):
     async def test_async_get_service_and_send_message(self):
@@ -119,7 +153,7 @@ class SmsSensorFixesTest(unittest.IsolatedAsyncioTestCase):
 
         await sensor.async_update()
 
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
 
     async def test_update_none_messages_is_safe(self):
         mock_gateway = Mock()
@@ -135,7 +169,7 @@ class SmsSensorFixesTest(unittest.IsolatedAsyncioTestCase):
         await sensor.async_update()
 
         self.assertEqual(sensor._messages, [])
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
         bus.async_fire.assert_not_called()
 
     async def test_remove_incoming_sms_deletes_new_message(self):

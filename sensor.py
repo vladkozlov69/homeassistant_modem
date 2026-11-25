@@ -107,11 +107,6 @@ class GsmModemSmsSensor(SensorEntity):
         return self._state
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
     def extra_state_attributes(self):
         """Return device specific state attributes."""
         return {SENSOR_LASTUPD: self._lastupdate.strftime("%Y-%m-%dT%H:%M:%S")}

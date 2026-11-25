@@ -407,9 +407,9 @@ class Gateway:
             return
         self._fire_event(EVT_LTE_DISCONNECTED, {})
 
-    def lte_up(self):
+    def lte_up(self, connection_name=None):
         """LTE Up."""
-        conn_name = self._get_connection_name()
+        conn_name = connection_name or self._get_connection_name()
         _LOG.debug("Configured connection name: %s", conn_name)
         if not conn_name:
             _LOG.warning("No LTE connection name configured")
@@ -430,9 +430,9 @@ class Gateway:
         except Exception:
             _LOG.exception("Failed to activate LTE connection")
 
-    def lte_down(self):
+    def lte_down(self, connection_name=None):
         """LTE Down."""
-        conn_name = self._get_connection_name()
+        conn_name = connection_name or self._get_connection_name()
         _LOG.debug("Configured connection name: %s", conn_name)
         if not conn_name:
             _LOG.warning("No LTE connection name configured")

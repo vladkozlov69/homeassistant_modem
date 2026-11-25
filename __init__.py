@@ -101,12 +101,12 @@ async def async_setup_modem(hass, config_entry):
     async def handle_lte_up(call):
         """Handle the LTE up service call."""
         lte_service = get_lte_service(hass)
-        await lte_service.lte_up()
+        await lte_service.lte_up(call.data.get(ATTR_CONNECTION_NAME))
 
     async def handle_lte_down(call):
         """Handle the LTE down service call."""
         lte_service = get_lte_service(hass)
-        await lte_service.lte_down()
+        await lte_service.lte_down(call.data.get(ATTR_CONNECTION_NAME))
 
     @callback
     def handle_sms_forget(call):
