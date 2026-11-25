@@ -18,7 +18,7 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
         sensor = GsmModemSmsSensor(Mock(bus=Mock(), data={'mm_modem': {'MM_MODEM_GATEWAY': mock_gateway}}),
                                    Mock(data={}))
         assert sensor.name == 'GSM Modem SMS'
-        assert sensor.state is None
+        assert sensor.native_value is None
 
     async def test_update_new_messages(self):
         mock_gateway = Mock(spec=Gateway)
@@ -33,7 +33,7 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
         hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *args: func(*args))
         sensor = GsmModemSmsSensor(hass, Mock(data={}))
         await sensor.async_update()
-        assert sensor.state == 2
+        assert sensor.native_value == 2
 
         calls = [
             call('logbook_entry',
@@ -64,14 +64,14 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
             SmsMessage(path='/m/p/2', number='01234', text='msg text2', timestamp='dd-mm-2025'),
         ]
         await sensor.async_update()
-        assert sensor.state == 2
+        assert sensor.native_value == 2
 
         mock_gateway.get_sms_messages.return_value = [
             SmsMessage(path='/m/p/1', number='01234', text='msg text', timestamp='dd-mm-2025'),
             SmsMessage(path='/m/p/3', number='01234', text='msg text3', timestamp='dd-mm-2025'),
         ]
         await sensor.async_update()
-        assert sensor.state == 2
+        assert sensor.native_value == 2
 
         calls = [
             call('logbook_entry',
@@ -93,7 +93,7 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
 
         mock_bus.async_fire.assert_has_calls(calls)
         assert mock_bus.async_fire.call_count == len(calls)
-        mock_gateway.delete_sms_message.assert_called_once_with('/m/p/1')
+        mock_gateway.delete_sms_message.assert_not_called()
 
     async def test_update_new_messages_filter_duplicates(self):
         mock_gateway = Mock(spec=Gateway)
@@ -108,7 +108,7 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
         hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *args: func(*args))
         sensor = GsmModemSmsSensor(hass, Mock(data={}))
         await sensor.async_update()
-        assert sensor.state == 2
+        assert sensor.native_value == 2
 
         calls = [
             call('logbook_entry',
@@ -120,7 +120,7 @@ class GsmModemSmsSensorTest(unittest.IsolatedAsyncioTestCase):
 
         mock_bus.async_fire.assert_has_calls(calls)
         assert mock_bus.async_fire.call_count == len(calls)
-        mock_gateway.delete_sms_message.assert_called_once_with('/m/p/2')
+        mock_gateway.delete_sms_message.assert_not_called()
 
 
 if __name__ == '__main__':

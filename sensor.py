@@ -3,13 +3,13 @@
 
 """Platform for sensor integration."""
 
-import logging
 from collections.abc import Mapping
-from datetime import datetime
+import logging
 
 from homeassistant.components import logbook
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import Event
-from homeassistant.helpers.entity import Entity
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_REMOVE_INCOMING_SMS,
@@ -22,9 +22,16 @@ from .const import (
     SMS_SENSOR_ID,
     SMS_SENSOR_NAME,
 )
-from .exceptions import GSMGatewayException
 
 _LOGGER = logging.getLogger(__name__)
+_MAX_SEEN_SMS = 500
+
+
+def _remember(cache: dict, key: str, maxlen: int = _MAX_SEEN_SMS) -> None:
+    """Insert key into a bounded insertion-ordered dict."""
+    if key not in cache and len(cache) >= maxlen:
+        cache.pop(next(iter(cache)))
+    cache[key] = None
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -38,18 +45,18 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities([GsmModemSmsSensor(hass, conf)])
 
 
-class GsmModemSmsSensor(Entity):
-    """Representation of a Sensor."""
+class GsmModemSmsSensor(SensorEntity):
+    """Representation of an incoming SMS count sensor."""
 
     def __init__(self, hass, conf_entry):
         """Initialize the sensor."""
         self._state = None
-        self._lastupdate = datetime.now()
+        self._lastupdate = dt_util.now()
         self._hass = hass
         self._messages = []
         self._remove_inc_sms = self._read_remove_incoming_sms(conf_entry)
-        self._processed_messages = set()
-        self._duplicated_content = set()
+        self._processed_messages = {}
+        self._duplicated_content = {}
         self._unsub_listeners = []
         self._unsub_listeners.append(
             hass.bus.async_listen(EVT_SMS_RECEIVED, self._handle_sms_received)
@@ -78,7 +85,7 @@ class GsmModemSmsSensor(Entity):
         return False
 
     def get_gateway(self):
-        """Returns the modem gateway instance from hass scope."""
+        """Return the modem gateway instance from hass scope."""
         domain_data = self._hass.data.get(DOMAIN)
         if isinstance(domain_data, Mapping):
             return domain_data.get(MODEM_GATEWAY)
@@ -95,7 +102,7 @@ class GsmModemSmsSensor(Entity):
         return SMS_SENSOR_ID
 
     @property
-    def state(self):
+    def native_value(self):
         """Return the state of the sensor."""
         return self._state
 
@@ -106,7 +113,7 @@ class GsmModemSmsSensor(Entity):
 
     @property
     def should_poll(self):
-        """No polling needed."""
+        """Return True if entity has to be polled for state."""
         return True
 
     async def async_will_remove_from_hass(self):
@@ -120,15 +127,16 @@ class GsmModemSmsSensor(Entity):
         self.async_write_ha_state()
 
     async def _handle_sms_forget(self, call):
-        self._processed_messages = set()
-        self._duplicated_content = set()
+        self._processed_messages.clear()
+        self._duplicated_content.clear()
         _LOGGER.debug("[_handle_sms_forget] Cleared processed_messages list")
         await self._handle_sms_received(call)
 
     async def _handle_sms_delete(self, call: Event):
         message_path = call.data.get("path")
         if message_path is None:
-            raise GSMGatewayException("No message path specified")
+            _LOGGER.error("No message path specified for %s", EVT_SMS_DELETE)
+            return
         _LOGGER.debug("_handle_sms_delete: %s", message_path)
         gateway = self.get_gateway()
         if gateway is None:
@@ -139,9 +147,9 @@ class GsmModemSmsSensor(Entity):
     async def async_update(self):
         """Fetch new state data for the sensor."""
         gateway = self.get_gateway()
-        self._lastupdate = datetime.now()
+        self._lastupdate = dt_util.now()
         if gateway is None:
-            self._state = "Unknown"
+            self._state = None
             self._messages = []
             return
 
@@ -156,7 +164,7 @@ class GsmModemSmsSensor(Entity):
             else:
                 messages = result
         if messages is None:
-            self._state = "Unknown"
+            self._state = None
             self._messages = []
             return
 
@@ -170,15 +178,15 @@ class GsmModemSmsSensor(Entity):
 
         for message in self._messages:
             message_content = (
-                str(message.number) + "|" + str(message.text) + "|" + str(message.timestamp)
+                f"{message.number}|{message.text}|{message.timestamp}"
             )
             if (
                 message.path not in self._processed_messages
                 and message_content not in self._duplicated_content
             ):
                 _LOGGER.debug(message.path)
-                self._processed_messages.add(message.path)
-                self._duplicated_content.add(message_content)
+                _remember(self._processed_messages, message.path)
+                _remember(self._duplicated_content, message_content)
 
                 logbook.async_log_entry(
                     self._hass,
@@ -202,8 +210,8 @@ class GsmModemSmsSensor(Entity):
                         "text": message.text,
                     },
                 )
-                if self._remove_inc_sms:
-                    await gateway.delete_sms_message(message.path)
             else:
                 _LOGGER.debug("[update] Skipping as already processed: %s", message.path)
+
+            if self._remove_inc_sms:
                 await gateway.delete_sms_message(message.path)

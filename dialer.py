@@ -5,21 +5,15 @@
 
 import logging
 
-from .const import DOMAIN, MODEM_GATEWAY
 from .exceptions import GSMGatewayException
+from .gateway import get_modem_gateway
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def get_dialer_service(hass):
     """Get the dialer service."""
-    domain_data = hass.data.get(DOMAIN, {})
-    gateway = domain_data.get(MODEM_GATEWAY) if isinstance(domain_data, dict) else None
-    if gateway is None:
-        _LOGGER.error("GSM gateway not found, cannot initialize service")
-        raise GSMGatewayException("GSM gateway not found")
-
-    return DialerNotificationService(gateway, hass)
+    return DialerNotificationService(get_modem_gateway(hass), hass)
 
 
 class DialerNotificationService:

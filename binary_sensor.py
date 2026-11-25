@@ -1,16 +1,16 @@
 # Copyright (c) 2026 Vladimir Kozlov <vkozloff@gmail.com>
 # SPDX-License-Identifier: MIT
 
-"""Platform for sensor integration."""
+"""Platform for binary sensor integration."""
 
-import logging
 from collections.abc import Mapping
-from datetime import datetime
+import logging
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
@@ -45,34 +45,64 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities([GsmModemSensor(hass), LteConnectionSensor(hass)])
 
 
-class GsmModemSensor(BinarySensorEntity):
-    """Representation of a Sensor."""
+class _BaseModemBinarySensor(BinarySensorEntity):
+    """Shared base class for modem connectivity binary sensors."""
 
     def __init__(self, hass):
-        """Initialize the sensor."""
-        self._state = None
+        """Initialize shared entity state."""
         self.hass = hass
-        self._signal_strength = 0
-        self._modem_status = "none"
-        self._cell_operator = "none"
-        self._prev_status = False
         self._unsub_listeners = []
-        self._unsub_listeners.append(
-            hass.bus.async_listen(EVT_MODEM_DISCONNECTED, self._handle_modem_disconnected)
-        )
-        self._unsub_listeners.append(
-            hass.bus.async_listen(EVT_MODEM_CONNECTED, self._handle_modem_connected)
-        )
-        try:
-            self.update()
-        except Exception:  # pragma: no cover - defensive startup
-            _LOGGER.debug("Initial GSM modem state update failed", exc_info=True)
+
+    async def async_added_to_hass(self):
+        """Refresh initial state when entity is added."""
+        await self._async_update_state()
+        self.async_write_ha_state()
 
     async def async_will_remove_from_hass(self):
         """Clean up event listeners."""
         for unsub in self._unsub_listeners:
             unsub()
         self._unsub_listeners.clear()
+
+    async def _async_update_state(self):
+        """Run synchronous update in executor when available."""
+        executor_job = getattr(self.hass, "async_add_executor_job", None)
+        if executor_job is None:
+            self.update()
+            return
+        result = executor_job(self.update)
+        if hasattr(result, "__await__"):
+            await result
+
+    def get_gateway(self):
+        """Return the modem gateway instance from hass scope."""
+        domain_data = self.hass.data.get(DOMAIN)
+        if isinstance(domain_data, Mapping):
+            return domain_data.get(MODEM_GATEWAY)
+        return None
+
+    @property
+    def device_class(self):
+        """Return the class of this device, from component DEVICE_CLASSES."""
+        return BinarySensorDeviceClass.CONNECTIVITY
+
+
+class GsmModemSensor(_BaseModemBinarySensor):
+    """Representation of a GSM modem connectivity sensor."""
+
+    def __init__(self, hass):
+        """Initialize the sensor."""
+        super().__init__(hass)
+        self._signal_strength = 0
+        self._modem_status = "none"
+        self._cell_operator = "none"
+        self._prev_status = False
+        self._unsub_listeners.append(
+            hass.bus.async_listen(EVT_MODEM_DISCONNECTED, self._handle_modem_disconnected)
+        )
+        self._unsub_listeners.append(
+            hass.bus.async_listen(EVT_MODEM_CONNECTED, self._handle_modem_connected)
+        )
 
     async def _handle_modem_disconnected(self, call):
         _LOGGER.info("_handle_modem_disconnected")
@@ -84,22 +114,6 @@ class GsmModemSensor(BinarySensorEntity):
         await self._async_update_state()
         self.async_write_ha_state()
 
-    async def _async_update_state(self):
-        executor_job = getattr(self.hass, "async_add_executor_job", None)
-        if executor_job is None:
-            self.update()
-            return
-        result = executor_job(self.update)
-        if hasattr(result, "__await__"):
-            await result
-
-    def get_gateway(self):
-        """Returns the modem gateway instance from hass scope."""
-        domain_data = self.hass.data.get(DOMAIN)
-        if isinstance(domain_data, Mapping):
-            return domain_data.get(MODEM_GATEWAY)
-        return None
-
     @property
     def name(self):
         """Return the name of the sensor."""
@@ -109,11 +123,6 @@ class GsmModemSensor(BinarySensorEntity):
     def is_on(self):
         """Return the state of the sensor."""
         return self._modem_status in (REGISTERED_STATUS, CONNECTED_STATUS)
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return BinarySensorDeviceClass.CONNECTIVITY
 
     @property
     def unique_id(self):
@@ -127,7 +136,7 @@ class GsmModemSensor(BinarySensorEntity):
             SENSOR_STATUS: self._modem_status,
             SENSOR_OPERATOR: self._cell_operator,
             SENSOR_SIGNAL: self._signal_strength,
-            SENSOR_LASTUPD: datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            SENSOR_LASTUPD: dt_util.now().strftime("%Y-%m-%dT%H:%M:%S"),
         }
 
     def update(self):
@@ -158,33 +167,20 @@ class GsmModemSensor(BinarySensorEntity):
                 _LOGGER.info("GSM modem disconnected")
 
 
-class LteConnectionSensor(BinarySensorEntity):
-    """Representation of a Sensor."""
+class LteConnectionSensor(_BaseModemBinarySensor):
+    """Representation of an LTE connection sensor."""
 
     def __init__(self, hass):
         """Initialize the sensor."""
-        self._state = None
-        self.hass = hass
+        super().__init__(hass)
         self._lte_status = False
         self._modem_status = "none"
-        self._prev_status = False
-        self._unsub_listeners = []
         self._unsub_listeners.append(
             hass.bus.async_listen(EVT_LTE_DISCONNECTED, self._handle_lte_disconnected)
         )
         self._unsub_listeners.append(
             hass.bus.async_listen(EVT_LTE_CONNECTED, self._handle_lte_connected)
         )
-        try:
-            self.update()
-        except Exception:  # pragma: no cover - defensive startup
-            _LOGGER.debug("Initial LTE state update failed", exc_info=True)
-
-    async def async_will_remove_from_hass(self):
-        """Clean up event listeners."""
-        for unsub in self._unsub_listeners:
-            unsub()
-        self._unsub_listeners.clear()
 
     async def _handle_lte_disconnected(self, call):
         await self._async_update_state()
@@ -193,22 +189,6 @@ class LteConnectionSensor(BinarySensorEntity):
     async def _handle_lte_connected(self, call):
         await self._async_update_state()
         self.async_write_ha_state()
-
-    async def _async_update_state(self):
-        executor_job = getattr(self.hass, "async_add_executor_job", None)
-        if executor_job is None:
-            self.update()
-            return
-        result = executor_job(self.update)
-        if hasattr(result, "__await__"):
-            await result
-
-    def get_gateway(self):
-        """Returns the modem gateway instance from hass scope."""
-        domain_data = self.hass.data.get(DOMAIN)
-        if isinstance(domain_data, Mapping):
-            return domain_data.get(MODEM_GATEWAY)
-        return None
 
     @property
     def name(self):
@@ -219,11 +199,6 @@ class LteConnectionSensor(BinarySensorEntity):
     def is_on(self):
         """Return the state of the sensor."""
         return bool(self._lte_status) or self._modem_status == CONNECTED_STATUS
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return BinarySensorDeviceClass.CONNECTIVITY
 
     @property
     def unique_id(self):

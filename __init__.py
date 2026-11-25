@@ -6,11 +6,7 @@
 from collections.abc import Mapping
 import logging
 
-import gi
 import voluptuous as vol
-
-gi.require_version("ModemManager", "1.0")
-from gi.repository import Gio, ModemManager
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
@@ -26,8 +22,7 @@ from .const import (
     MODEM_GATEWAY,
 )
 from .dialer import get_dialer_service
-from .exceptions import GSMGatewayException
-from .gateway import create_modem_gateway
+from .gateway import create_modem_gateway, get_modem_gateway
 from .lte import get_lte_service
 from .notify import get_sms_service
 
@@ -84,29 +79,12 @@ async def async_setup(hass, config):
 async def async_setup_modem(hass, config_entry):
     """Set up the LTE Modem component."""
 
-    def handle_send_sms(call):
+    async def handle_send_sms(call):
         """Handle the sms sending service call."""
         number = call.data.get(ATTR_PHONE_NUMBER)
         message = call.data.get(ATTR_MESSAGE)
-
-        sms_properties = ModemManager.SmsProperties.new()
-        sms_properties.set_number(number)
-        sms_properties.set_text(message)
-
-        connection = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-        manager = ModemManager.Manager.new_sync(
-            connection, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START, None
-        )
-        if manager.get_name_owner() is None:
-            raise GSMGatewayException("ModemManager not found in bus")
-
-        for obj in manager.get_objects():
-            messaging = obj.get_modem_messaging()
-            if messaging is None:
-                continue
-            sms = messaging.create_sync(sms_properties)
-            sms.send_sync()
-            _LOGGER.debug("SMS sent via %s", messaging.get_object_path())
+        gateway = get_modem_gateway(hass)
+        await hass.async_add_executor_job(gateway.send_sms, number, message)
 
     async def handle_delete_sms(call):
         """Handle the sms deleting service call."""
@@ -123,12 +101,12 @@ async def async_setup_modem(hass, config_entry):
     async def handle_lte_up(call):
         """Handle the LTE up service call."""
         lte_service = get_lte_service(hass)
-        await lte_service.lte_up()
+        await lte_service.lte_up(call.data.get(ATTR_CONNECTION_NAME))
 
     async def handle_lte_down(call):
         """Handle the LTE down service call."""
         lte_service = get_lte_service(hass)
-        await lte_service.lte_down()
+        await lte_service.lte_down(call.data.get(ATTR_CONNECTION_NAME))
 
     @callback
     def handle_sms_forget(call):
@@ -140,14 +118,6 @@ async def async_setup_modem(hass, config_entry):
     if not isinstance(domain_data, dict):
         domain_data = {}
         hass.data[DOMAIN] = domain_data
-
-    is_config_entry = hasattr(config_entry, "add_update_listener")
-    if is_config_entry:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setups(
-                config_entry, ["binary_sensor", "sensor"]
-            )
-        )
 
     modem_gateway = create_modem_gateway(config_entry, hass)
     if not modem_gateway:
@@ -165,8 +135,12 @@ async def async_setup_modem(hass, config_entry):
     hass.services.async_register(
         DOMAIN, "dial", handle_dial, schema=MM_DIAL_SERVICE_SCHEMA
     )
-    hass.services.async_register(DOMAIN, "lte_up", handle_lte_up)
-    hass.services.async_register(DOMAIN, "lte_down", handle_lte_down)
+    hass.services.async_register(
+        DOMAIN, "lte_up", handle_lte_up, schema=MM_LTE_SERVICE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "lte_down", handle_lte_down, schema=MM_LTE_SERVICE_SCHEMA
+    )
     hass.services.async_register(DOMAIN, "sms_forget", handle_sms_forget)
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, modem_gateway.stop_glib_loop)

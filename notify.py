@@ -7,12 +7,15 @@ import logging
 
 import voluptuous as vol
 
-from homeassistant.components.notify import PLATFORM_SCHEMA
+from homeassistant.components.notify import (
+    ATTR_TARGET,
+    PLATFORM_SCHEMA,
+    BaseNotificationService,
+)
 from homeassistant.const import CONF_NAME, CONF_RECIPIENT
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, MODEM_GATEWAY
-from .exceptions import GSMGatewayException
+from .gateway import get_modem_gateway
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,28 +27,39 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
+async def async_get_service(hass, config, discovery_info=None):
+    """Get the SMS notification service for Home Assistant's notify platform."""
+    gateway = get_modem_gateway(hass)
+    return SMSNotificationService(
+        gateway, hass, default_recipient=config.get(CONF_RECIPIENT)
+    )
+
+
 def get_sms_service(hass):
     """Get the SMS notification service."""
-    domain_data = hass.data.get(DOMAIN, {})
-    gateway = domain_data.get(MODEM_GATEWAY) if isinstance(domain_data, dict) else None
-    if gateway is None:
-        _LOGGER.error("GSM gateway not found, cannot initialize service")
-        raise GSMGatewayException("GSM gateway not found")
-
-    return SMSNotificationService(gateway, hass)
+    return SMSNotificationService(get_modem_gateway(hass), hass)
 
 
-class SMSNotificationService:
+class SMSNotificationService(BaseNotificationService):
     """Implement the notification service for SMS."""
 
-    def __init__(self, gateway, hass=None):
+    def __init__(self, gateway, hass=None, default_recipient=None):
         """Initialize the service."""
         self.gateway = gateway
         self.hass = hass
+        self._default_recipient = default_recipient
 
-    def send_message(self, number, message):
-        """Send SMS message."""
-        self.gateway.send_sms(number, message)
+    def send_message(self, message="", **kwargs):
+        """Send an SMS message to target numbers or the configured recipient."""
+        targets = kwargs.get(ATTR_TARGET)
+        if not targets:
+            if not self._default_recipient:
+                _LOGGER.error("No SMS recipient specified")
+                return
+            targets = [self._default_recipient]
+
+        for target in targets:
+            self.gateway.send_sms(target, message)
 
     async def delete_message(self, path):
         """Delete SMS message."""
