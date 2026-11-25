@@ -58,6 +58,54 @@ class GatewayFixesTest(unittest.TestCase):
 
         self.assertFalse(gateway.get_lte_state())
 
+    def test_on_object_added_without_messaging_does_not_crash(self):
+        import gi.repository.ModemManager as MM
+
+        hass = Mock()
+        hass.bus = Mock()
+        hass.loop = None
+        gateway = Gateway({}, hass)
+        modem = Mock()
+        modem.get_state.return_value = object()
+        MM.ModemState.FAILED = object()
+        obj = Mock()
+        obj.get_modem.return_value = modem
+        obj.get_modem_messaging.return_value = None
+
+        gateway.on_object_added(Mock(), obj)
+
+        self.assertIs(gateway._modem_object, obj)
+        self.assertIsNone(gateway._messaging)
+        hass.bus.fire.assert_called_once()
+
+    def test_dial_voice_without_voice_interface_raises(self):
+        from mm_modem.exceptions import GSMGatewayException
+
+        gateway = Gateway({}, Mock())
+        mm_obj = Mock()
+        mm_obj.get_modem_voice.return_value = None
+        gateway._modem_object = mm_obj
+
+        with self.assertRaises(GSMGatewayException):
+            gateway.dial_voice("12345")
+
+
+class NotifyServiceTest(unittest.IsolatedAsyncioTestCase):
+    async def test_async_get_service_and_send_message(self):
+        from homeassistant.const import CONF_RECIPIENT
+        from mm_modem.notify import async_get_service
+
+        gateway = Mock()
+        hass = Mock(data={DOMAIN: {MODEM_GATEWAY: gateway}})
+        service = await async_get_service(hass, {CONF_RECIPIENT: "+12345"})
+
+        service.send_message("hello")
+        gateway.send_sms.assert_called_once_with("+12345", "hello")
+
+        gateway.send_sms.reset_mock()
+        service.send_message("hi", target=["+999"])
+        gateway.send_sms.assert_called_once_with("+999", "hi")
+
 
 class SmsSensorFixesTest(unittest.IsolatedAsyncioTestCase):
     async def test_update_missing_gateway_is_safe(self):
@@ -71,7 +119,7 @@ class SmsSensorFixesTest(unittest.IsolatedAsyncioTestCase):
 
         await sensor.async_update()
 
-        self.assertEqual(sensor.state, "Unknown")
+        self.assertIsNone(sensor.state)
 
     async def test_update_none_messages_is_safe(self):
         mock_gateway = Mock()
@@ -87,7 +135,7 @@ class SmsSensorFixesTest(unittest.IsolatedAsyncioTestCase):
         await sensor.async_update()
 
         self.assertEqual(sensor._messages, [])
-        self.assertEqual(sensor.state, "Unknown")
+        self.assertIsNone(sensor.state)
         bus.async_fire.assert_not_called()
 
     async def test_remove_incoming_sms_deletes_new_message(self):

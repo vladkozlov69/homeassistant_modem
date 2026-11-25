@@ -180,7 +180,23 @@ def _stub_homeassistant_if_missing() -> None:
     class _BaseSchema:
         def extend(self, schema):
             return schema
+    class BaseNotificationService:
+        pass
     notify.PLATFORM_SCHEMA = _BaseSchema()
+    notify.ATTR_TARGET = "target"
+    notify.BaseNotificationService = BaseNotificationService
+
+    # homeassistant.components.sensor
+    sensor = _ensure_module("homeassistant.components.sensor")
+    class SensorEntity(Entity):
+        pass
+    sensor.SensorEntity = SensorEntity
+
+    # homeassistant.util.dt
+    from datetime import datetime, timezone
+    _ensure_module("homeassistant.util")
+    dt = _ensure_module("homeassistant.util.dt")
+    dt.now = lambda: datetime.now(timezone.utc)
 
 
 def _stub_voluptuous_if_missing() -> None:
