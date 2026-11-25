@@ -147,8 +147,8 @@ class GsmModemSensor(_BaseModemBinarySensor):
         else:
             try:
                 modem_info = gateway.get_modem_state()
-            except Exception:  # pragma: no cover - backend dependent
-                _LOGGER.exception("Failed to read modem state")
+            except (AttributeError, TypeError, ValueError) as err:
+                _LOGGER.error("Failed to read modem state: %s", err)
                 modem_info = None
 
         if modem_info is not None:
@@ -174,7 +174,6 @@ class LteConnectionSensor(_BaseModemBinarySensor):
         """Initialize the sensor."""
         super().__init__(hass)
         self._lte_status = False
-        self._modem_status = "none"
         self._unsub_listeners.append(
             hass.bus.async_listen(EVT_LTE_DISCONNECTED, self._handle_lte_disconnected)
         )
@@ -198,7 +197,7 @@ class LteConnectionSensor(_BaseModemBinarySensor):
     @property
     def is_on(self):
         """Return the state of the sensor."""
-        return bool(self._lte_status) or self._modem_status == CONNECTED_STATUS
+        return bool(self._lte_status)
 
     @property
     def unique_id(self):
@@ -215,22 +214,10 @@ class LteConnectionSensor(_BaseModemBinarySensor):
         gateway = self.get_gateway()
         if gateway is None:
             self._lte_status = False
-            self._modem_status = "none"
             return
 
         try:
             self._lte_status = bool(gateway.get_lte_state())
-        except Exception:  # pragma: no cover - backend dependent
-            _LOGGER.exception("Failed to read LTE state")
+        except (AttributeError, TypeError, ValueError) as err:
+            _LOGGER.error("Failed to read LTE state: %s", err)
             self._lte_status = False
-
-        try:
-            modem_info = gateway.get_modem_state()
-        except Exception:  # pragma: no cover - backend dependent
-            _LOGGER.exception("Failed to read modem state for LTE sensor")
-            modem_info = None
-
-        if modem_info is not None:
-            self._modem_status = modem_info.get("status", "none")
-        else:
-            self._modem_status = "none"

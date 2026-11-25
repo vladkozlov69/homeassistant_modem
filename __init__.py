@@ -126,6 +126,12 @@ async def async_setup_modem(hass, config_entry):
     domain_data[MODEM_GATEWAY] = modem_gateway
     await modem_gateway.async_added_to_hass()
 
+    # Forward config entry to binary_sensor and sensor platforms
+    if hasattr(config_entry, "add_update_listener"):
+        await hass.config_entries.async_forward_entry_setups(
+            config_entry, ["binary_sensor", "sensor"]
+        )
+
     hass.services.async_register(
         DOMAIN, "send_sms", handle_send_sms, schema=MM_SEND_SMS_SERVICE_SCHEMA
     )

@@ -131,13 +131,14 @@ class NotifyServiceTest(unittest.IsolatedAsyncioTestCase):
 
         gateway = Mock()
         hass = Mock(data={DOMAIN: {MODEM_GATEWAY: gateway}})
+        hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *a: func(*a))
         service = await async_get_service(hass, {CONF_RECIPIENT: "+12345"})
 
-        service.send_message("hello")
+        await service.send_message("hello")
         gateway.send_sms.assert_called_once_with("+12345", "hello")
 
         gateway.send_sms.reset_mock()
-        service.send_message("hi", target=["+999"])
+        await service.send_message("hi", target=["+999"])
         gateway.send_sms.assert_called_once_with("+999", "hi")
 
 
@@ -226,7 +227,6 @@ class BinarySensorFixesTest(unittest.TestCase):
 
         self.assertFalse(sensor.is_on)
         self.assertFalse(sensor._lte_status)
-        self.assertEqual(sensor._modem_status, "none")
 
 
 class SmsForgetEventTest(unittest.IsolatedAsyncioTestCase):

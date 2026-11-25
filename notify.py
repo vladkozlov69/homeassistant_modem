@@ -49,7 +49,7 @@ class SMSNotificationService(BaseNotificationService):
         self.hass = hass
         self._default_recipient = default_recipient
 
-    def send_message(self, message="", **kwargs):
+    async def send_message(self, message="", **kwargs):
         """Send an SMS message to target numbers or the configured recipient."""
         targets = kwargs.get(ATTR_TARGET)
         if not targets:
@@ -58,8 +58,12 @@ class SMSNotificationService(BaseNotificationService):
                 return
             targets = [self._default_recipient]
 
-        for target in targets:
-            self.gateway.send_sms(target, message)
+        if self.hass is not None:
+            for target in targets:
+                await self.hass.async_add_executor_job(self.gateway.send_sms, target, message)
+        else:
+            for target in targets:
+                self.gateway.send_sms(target, message)
 
     async def delete_message(self, path):
         """Delete SMS message."""
