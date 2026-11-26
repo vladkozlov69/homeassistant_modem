@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Vladimir Kozlov <vkozloff@gmail.com>
 # SPDX-License-Identifier: MIT
 
+import threading
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -57,6 +58,34 @@ class GatewayFixesTest(unittest.TestCase):
         NM.Client.new = Mock(return_value=client)
 
         self.assertFalse(gateway.get_lte_state())
+
+    def test_nm_client_is_created_on_glib_thread(self):
+        import gi.repository.NM as NM
+        import mm_modem.gateway as gateway_module
+
+        gateway = Gateway({}, None)
+        gateway._glib_thread = threading.Thread()
+        client = Mock()
+        creation_thread = []
+        create_client = Mock(
+            side_effect=lambda *_args: (
+                creation_thread.append(threading.get_ident()) or client
+            )
+        )
+
+        def schedule_on_glib_thread(callback):
+            worker = threading.Thread(target=callback)
+            worker.start()
+            worker.join()
+
+        with (
+            patch.object(NM.Client, "new", create_client),
+            patch.object(gateway_module.GLib, "idle_add", schedule_on_glib_thread),
+        ):
+            self.assertIs(gateway._get_nm_client(), client)
+
+        create_client.assert_called_once_with(None)
+        self.assertNotEqual(creation_thread[0], threading.get_ident())
 
     def test_on_object_added_without_messaging_does_not_crash(self):
         import gi.repository.ModemManager as MM

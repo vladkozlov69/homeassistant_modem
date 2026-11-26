@@ -55,6 +55,7 @@ class Gateway:
         self._config_entry = config_entry
         self._manager = None
         self._nm_client = None
+        self._nm_client_lock = threading.Lock()
         self._main_loop = None
         self._glib_thread = None
         self._initializing = True
@@ -104,15 +105,43 @@ class Gateway:
 
     def _get_nm_client(self):
         """Return a cached NetworkManager client instance."""
-        if self._nm_client is None:
-            self._nm_client = NM.Client.new(None)
-            self._nm_client.connect(
-                "active-connection-added", self._active_connection_added_cb
-            )
-            self._nm_client.connect(
-                "active-connection-removed", self._active_connection_removed_cb
-            )
-        return self._nm_client
+        if self._nm_client is not None:
+            return self._nm_client
+        if self._glib_thread is None or threading.current_thread() is self._glib_thread:
+            return self._create_nm_client()
+
+        result = []
+        completed = threading.Event()
+
+        def create_on_glib_thread():
+            try:
+                result.append((self._create_nm_client(), None))
+            except Exception as err:
+                result.append((None, err))
+            finally:
+                completed.set()
+            return False
+
+        GLib.idle_add(create_on_glib_thread)
+        if not completed.wait(timeout=10):
+            raise TimeoutError("Timed out waiting for the GLib loop to create NM client")
+        client, error = result[0]
+        if error is not None:
+            raise error
+        return client
+
+    def _create_nm_client(self):
+        """Create the NetworkManager client once."""
+        with self._nm_client_lock:
+            if self._nm_client is None:
+                self._nm_client = NM.Client.new(None)
+                self._nm_client.connect(
+                    "active-connection-added", self._active_connection_added_cb
+                )
+                self._nm_client.connect(
+                    "active-connection-removed", self._active_connection_removed_cb
+                )
+            return self._nm_client
 
     async def async_added_to_hass(self):
         """Handle when an entity is about to be added to Home Assistant."""
