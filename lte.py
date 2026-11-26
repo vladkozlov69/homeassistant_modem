@@ -1,37 +1,38 @@
-"""Support for SMS notification services."""
+# Copyright (c) 2026 Vladimir Kozlov <vkozloff@gmail.com>
+# SPDX-License-Identifier: MIT
+
+"""Support for LTE control services."""
+
 import logging
 
-import homeassistant.helpers.config_validation as cv
-
-from .const import DOMAIN, MODEM_GATEWAY
-from .exceptions import GSMGatewayException
+from .gateway import get_modem_gateway
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def get_lte_service(hass):
-    """Get the SMS notification service."""
-
-    if MODEM_GATEWAY not in hass.data[DOMAIN]:
-        _LOGGER.error("GSM gateway not found, cannot initialize service")
-        raise GSMGatewayException("GSM gateway not found")
-
-    gateway = hass.data[DOMAIN][MODEM_GATEWAY]
-
-    return MMLteService(gateway)
+    """Get the LTE service."""
+    return MMLteService(get_modem_gateway(hass), hass)
 
 
 class MMLteService:
-    """Implement the notification service for SMS."""
+    """Implement the LTE control service."""
 
-    def __init__(self, gateway):
+    def __init__(self, gateway, hass=None):
         """Initialize the service."""
         self.gateway = gateway
+        self.hass = hass
 
-    def lte_up(self):
+    async def lte_up(self, connection_name=None):
         """LTE Up."""
-        self.gateway.lte_up()
+        if self.hass is not None:
+            await self.hass.async_add_executor_job(self.gateway.lte_up, connection_name)
+        else:
+            self.gateway.lte_up(connection_name)
 
-    def lte_down(self):
+    async def lte_down(self, connection_name=None):
         """LTE Down."""
-        self.gateway.lte_down()
+        if self.hass is not None:
+            await self.hass.async_add_executor_job(self.gateway.lte_down, connection_name)
+        else:
+            self.gateway.lte_down(connection_name)

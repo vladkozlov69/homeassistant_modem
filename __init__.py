@@ -1,26 +1,41 @@
+# Copyright (c) 2026 Vladimir Kozlov <vkozloff@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """The sms component."""
-import asyncio
+
+from collections.abc import Mapping
 import logging
 
 import voluptuous as vol
 
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
+from homeassistant.helpers import config_validation as cv, discovery
 
-import homeassistant.helpers.config_validation as cv
-from homeassistant.config_entries import SOURCE_IMPORT
-
-from .const import DOMAIN, MODEM_GATEWAY, ATTR_PHONE_NUMBER, ATTR_MESSAGE, ATTR_CONNECTION_NAME
-
-from .gateway import create_modem_gateway
-from .notify import get_sms_service
+from .const import (
+    ATTR_CONNECTION_NAME,
+    ATTR_MESSAGE,
+    ATTR_PHONE_NUMBER,
+    ATTR_SMS_PATH,
+    DOMAIN,
+    EVT_SMS_FORGET,
+    MODEM_GATEWAY,
+)
 from .dialer import get_dialer_service
+from .gateway import create_modem_gateway, get_modem_gateway
 from .lte import get_lte_service
+from .notify import get_sms_service
 
-
-MM_SMS_SERVICE_SCHEMA = vol.Schema(
+MM_SEND_SMS_SERVICE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_PHONE_NUMBER): cv.string,
         vol.Required(ATTR_MESSAGE): cv.string,
+    }
+)
+
+MM_DELETE_SMS_SERVICE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_SMS_PATH): cv.string,
     }
 )
 
@@ -32,7 +47,7 @@ MM_DIAL_SERVICE_SCHEMA = vol.Schema(
 
 MM_LTE_SERVICE_SCHEMA = vol.Schema(
     {
-        vol.Required(ATTR_CONNECTION_NAME): cv.string,
+        vol.Optional(ATTR_CONNECTION_NAME): cv.string,
     }
 )
 
@@ -40,68 +55,100 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup(hass, config):
-    """Import integration from config."""
+    """Set up the modem integration from YAML config."""
+    conf = config.get(DOMAIN)
+    if conf is None:
+        _LOGGER.debug("No config for %s, skipping setup.", DOMAIN)
+        return True
 
-    if DOMAIN in config:
-        hass.async_create_task(
-            hass.config_entries.flow.async_init(
-                DOMAIN, context={"source": SOURCE_IMPORT}, data=config[DOMAIN]
-            )
-        )
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not isinstance(domain_data, dict):
+        domain_data = {}
+        hass.data[DOMAIN] = domain_data
+    if isinstance(conf, Mapping):
+        domain_data["config"] = conf
+
+    await async_setup_modem(hass, conf)
+
+    _LOGGER.debug("Loading sensor and binary_sensor platforms")
+    await discovery.async_load_platform(hass, "sensor", DOMAIN, conf, config)
+    await discovery.async_load_platform(hass, "binary_sensor", DOMAIN, conf, config)
     return True
 
 
-async def async_setup_entry(hass, config_entry):
+async def async_setup_modem(hass, config_entry):
     """Set up the LTE Modem component."""
 
-    print("async_setup_entry => %s" % config_entry.options)
-
-    @callback
-    def handle_send_sms(call):
+    async def handle_send_sms(call):
         """Handle the sms sending service call."""
         number = call.data.get(ATTR_PHONE_NUMBER)
         message = call.data.get(ATTR_MESSAGE)
-        get_sms_service(hass).send_message(number, message)
+        gateway = get_modem_gateway(hass)
+        await hass.async_add_executor_job(gateway.send_sms, number, message)
 
-    @callback
-    def handle_dial(call):
-        """Handle the sms sending service call."""
+    async def handle_delete_sms(call):
+        """Handle the sms deleting service call."""
+        path = call.data.get(ATTR_SMS_PATH)
+        sms_service = get_sms_service(hass)
+        await sms_service.delete_message(path)
+
+    async def handle_dial(call):
+        """Handle the voice dial service call."""
         number = call.data.get(ATTR_PHONE_NUMBER)
-        get_dialer_service(hass).dial(number)
+        dialer_service = get_dialer_service(hass)
+        await dialer_service.dial(number)
+
+    async def handle_lte_up(call):
+        """Handle the LTE up service call."""
+        lte_service = get_lte_service(hass)
+        await lte_service.lte_up(call.data.get(ATTR_CONNECTION_NAME))
+
+    async def handle_lte_down(call):
+        """Handle the LTE down service call."""
+        lte_service = get_lte_service(hass)
+        await lte_service.lte_down(call.data.get(ATTR_CONNECTION_NAME))
 
     @callback
-    def handle_lte_up():
-        """Handle the service call."""
-        get_lte_service(hass).lte_up()
+    def handle_sms_forget(call):
+        """Handle the sms forgetting service call."""
+        _LOGGER.debug("Firing event: %s", EVT_SMS_FORGET)
+        hass.bus.async_fire_internal(EVT_SMS_FORGET)
 
-    @callback
-    def handle_lte_down():
-        """Handle the service call."""
-        get_lte_service(hass).lte_down()
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not isinstance(domain_data, dict):
+        domain_data = {}
+        hass.data[DOMAIN] = domain_data
 
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(config_entry,
-                                                      "binary_sensor")
-    )
-
-    hass.data.setdefault(DOMAIN, {})
-
-    _LOGGER.info("Before create_modem_gateway")
-
-    gateway = create_modem_gateway(config_entry, hass)
-
-    _LOGGER.info("After create_modem_gateway")
-
-    if not gateway:
+    modem_gateway = create_modem_gateway(config_entry, hass)
+    if not modem_gateway:
         return False
 
-    hass.data[DOMAIN][MODEM_GATEWAY] = gateway
+    domain_data[MODEM_GATEWAY] = modem_gateway
+    await modem_gateway.async_added_to_hass()
 
-    hass.services.async_register(DOMAIN, 'send_sms', handle_send_sms,
-                                 schema=MM_SMS_SERVICE_SCHEMA)
-    hass.services.async_register(DOMAIN, 'dial', handle_dial,
-                                 schema=MM_DIAL_SERVICE_SCHEMA)
-    hass.services.async_register(DOMAIN, 'lte_up', handle_lte_up)
-    hass.services.async_register(DOMAIN, 'lte_down', handle_lte_down)
+    # Forward config entry to binary_sensor and sensor platforms
+    if hasattr(config_entry, "add_update_listener"):
+        await hass.config_entries.async_forward_entry_setups(
+            config_entry, ["binary_sensor", "sensor"]
+        )
+
+    hass.services.async_register(
+        DOMAIN, "send_sms", handle_send_sms, schema=MM_SEND_SMS_SERVICE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "delete_sms", handle_delete_sms, schema=MM_DELETE_SMS_SERVICE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "dial", handle_dial, schema=MM_DIAL_SERVICE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "lte_up", handle_lte_up, schema=MM_LTE_SERVICE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "lte_down", handle_lte_down, schema=MM_LTE_SERVICE_SCHEMA
+    )
+    hass.services.async_register(DOMAIN, "sms_forget", handle_sms_forget)
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, modem_gateway.stop_glib_loop)
 
     return True

@@ -1,32 +1,32 @@
+# Copyright (c) 2026 Vladimir Kozlov <vkozloff@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """Support for Dial notification services."""
+
 import logging
 
-from .const import DOMAIN, MODEM_GATEWAY
 from .exceptions import GSMGatewayException
+from .gateway import get_modem_gateway
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def get_dialer_service(hass):
-    """Get the SMS notification service."""
-
-    if MODEM_GATEWAY not in hass.data[DOMAIN]:
-        _LOGGER.error("SMS gateway not found, cannot initialize service")
-        raise GSMGatewayException("GSM gateway not found")
-
-    gateway = hass.data[DOMAIN][MODEM_GATEWAY]
-
-    return DialerNotificationService(gateway)
+    """Get the dialer service."""
+    return DialerNotificationService(get_modem_gateway(hass), hass)
 
 
 class DialerNotificationService:
     """Implement the notification service for Dialer."""
 
-    def __init__(self, gateway):
+    def __init__(self, gateway, hass=None):
         """Initialize the service."""
         self.gateway = gateway
+        self.hass = hass
 
-    def dial(self, number):
+    async def dial(self, number):
         """Dial the given number."""
-
-        self.gateway.dial_voice(number)
+        if self.hass is not None:
+            await self.hass.async_add_executor_job(self.gateway.dial_voice, number)
+        else:
+            self.gateway.dial_voice(number)
